@@ -1,7 +1,7 @@
 import re
 import os
 import threading
-from datetime import datetime
+import datetime
 from playwright.sync_api import Playwright, sync_playwright
 from dotenv import load_dotenv
 # 載入 .env 檔
@@ -18,35 +18,24 @@ screenshot_lock = threading.Lock()
 def take_screenshot(game_name, uid, page=None, element=None):
     """
     截圖函式，可截取特定元素（element）或整頁（page）。
-    命名格式：
-      根資料夾：screenshots/
-      子資料夾：{game_name}_{uid}/
-      檔案名稱：{MMDD_HHMMSS}.png
-    範例：screenshots/IdentityV_無敵俊朗小帥哥/0703_223015.png
+    使用高精度時間戳確保檔名唯一。
     """
-    with screenshot_lock:
-        # 1. 根資料夾
-        root_folder = "screenshots"
-        # 2. 依 game_name 和 uid 建立子資料夾
-        sub_folder = os.path.join(root_folder, f"{game_name}_{uid}")
-        os.makedirs(sub_folder, exist_ok=True)
+    # 為本次執行建立唯一的子資料夾路徑
+    run_specific_folder = os.path.join("screenshots", f"{game_name}_{uid}")
+    os.makedirs(run_specific_folder, exist_ok=True)
 
-        # 3. 取得當前時間字串（格式：月日_時分秒）
-        timestamp = datetime.now().strftime("%m%d_%H%M%S")
+    # 使用包含微秒的高精度時間戳來命名，避免衝突
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    filename = os.path.join(run_specific_folder, f"{timestamp}.png")
 
-        # 4. 組成最終檔案路徑
-        filename = os.path.join(sub_folder, f"{timestamp}.png")
+    if element:
+        element.screenshot(path=filename)
+    elif page:
+        page.screenshot(path=filename, full_page=True)
+    else:
+        raise ValueError("必須傳入 page 或 element 作為截圖來源")
 
-        # 5. 執行截圖
-        if element:
-            element.screenshot(path=filename)
-        elif page:
-            page.screenshot(path=filename, full_page=True)
-        else:
-            raise ValueError("必須傳入 page 或 element 作為截圖來源")
-
-        # 6. 通知已儲存
-        print(f"✅ 已儲存截圖：{filename}")
+    print(f"✅ 已儲存截圖：{filename}")
 
 
 def check_game_info(page, expected_game_name, context, browser):
@@ -206,7 +195,7 @@ def run(playwright: Playwright, uid: str, game_name: str) -> None:
         field.scroll_into_view_if_needed()
         # 填入單一數字
         field.fill(digit)
-    # --- OTP 欄位填寫段落 end ---``
+    # --- OTP 欄位填寫段落 end ---
 
 
     # 20. 點擊「確 定」完成 OTP 驗證
@@ -239,16 +228,17 @@ def run(playwright: Playwright, uid: str, game_name: str) -> None:
 
 def validate_screenshots(expected_count, game_name, uid):
     """驗證截圖數量是否與預期相符。"""
-    screenshot_folder = "screenshots"
+    # 直接指向為本次執行建立的子資料夾
+    run_specific_folder = os.path.join("screenshots", f"{game_name}_{uid}")
+    actual_count = 0
+
     try:
-        # 取得所有截圖檔案
-        all_files = os.listdir(screenshot_folder)
-        # 篩選出符合這次執行的檔案 (根據 game_name 和 uid)
-        run_screenshots = [
-            f for f in all_files
-            if f.startswith(f"{game_name}_{uid}_") and f.endswith(".png")
-        ]
-        actual_count = len(run_screenshots)
+        # 檢查子資料夾是否存在
+        if os.path.isdir(run_specific_folder):
+            # 計算子資料夾中所有 .png 檔案的數量
+            all_files_in_subdir = os.listdir(run_specific_folder)
+            run_screenshots = [f for f in all_files_in_subdir if f.endswith(".png")]
+            actual_count = len(run_screenshots)
 
         print(f"\n--- 驗證報告 ---")
         print(f"預期執行次數：{expected_count}")
@@ -260,20 +250,19 @@ def validate_screenshots(expected_count, game_name, uid):
             print(f"❌ 驗證失敗：數量不符！可能有 {expected_count - actual_count} 次執行失敗或未成功截圖。")
             print("請檢查 logs 或 screenshots 資料夾。")
 
-    except FileNotFoundError:
-        print("\n--- 驗證報告 ---")
-        print(f"❌ 驗證失敗：找不到 '{screenshot_folder}' 資料夾。")
     except Exception as e:
         print(f"\n--- 驗證報告 ---")
         print(f"❌ 驗證時發生未知錯誤：{e}")
 
-def check_balance(playwright: Playwright, num_runs: int, uid: str, game_name: str) -> None:
+def check_balance(playwright: Playwright, num_runs: int, uid: str, game_name: str) -> bool:
     """
     在執行主要任務前，先檢查帳號餘額是否足夠。
-    如果不足，則直接退出程式。
+
+    Returns:
+        bool: 如果餘額充足則返回 True，否則返回 False。
     """
     print("--- 正在進行事前餘額檢查 ---")
-    browser = playwright.chromium.launch(headless=False)
+    browser = playwright.chromium.launch(headless=True)
     context = browser.new_context()
     page = context.new_page()
 
@@ -355,16 +344,17 @@ def check_balance(playwright: Playwright, num_runs: int, uid: str, game_name: st
 
         if current_balance >= required_amount:
             print("✅ 餘額充足，準備開始執行任務。")
+            return True
         else:
             shortfall = required_amount - current_balance
             print(f"❌ 餘額不足！尚缺 PHP {shortfall:.2f}，請儲值後再執行。")
             print("程式將自動終止。")
-            exit() # 直接退出程式
+            return False
 
     except Exception as e:
         print(f"❌ 餘額檢查過程中發生錯誤：{e}")
         print("請檢查您的帳號密碼或網路連線。程式將自動終止。")
-        exit()
+        return False
     finally:
         print("--- 餘額檢查完畢 ---")
         context.close()
@@ -381,35 +371,38 @@ def main_logic():
 
     # 在所有任務開始前，先用 Playwright 檢查餘額
     with sync_playwright() as playwright:
-        check_balance(playwright, num_runs, uid, game_name)
+        if not check_balance(playwright, num_runs, uid, game_name):
+            return  # 如果餘額不足，直接結束 main_logic
 
-        # 建立信號量，限制同時運行的線程數量
-        semaphore = threading.Semaphore(max_concurrent_runs)
+    # 建立信號量，限制同時運行的線程數量
+    semaphore = threading.Semaphore(max_concurrent_runs)
 
-        def thread_run(p: Playwright, uid_str, game_name_str):
-            """每個線程要執行的目標函式"""
-            # 在執行前，先取得一個信號量 (如果計數為 0 則會在此等待)
-            semaphore.acquire()
-            try:
-                # 這裡不再需要 with sync_playwright()，直接使用傳入的實例
+    def thread_run(uid_str, game_name_str):
+        """每個線程要執行的目標函式"""
+        # 在執行前，先取得一個信號量 (如果計數為 0 則會在此等待)
+        semaphore.acquire()
+        try:
+            # 每個執行緒都建立自己獨立的 Playwright 實例
+            # 確保執行緒之間互不干擾
+            with sync_playwright() as p:
                 run(p, uid_str, game_name_str)
-            finally:
-                # 確保無論成功或失敗，都會釋放信號量，讓下一個線程可以執行
-                semaphore.release()
+        finally:
+            # 確保無論成功或失敗，都會釋放信號量，讓下一個線程可以執行
+            semaphore.release()
 
-        threads = []
-        print(f"🚀 即將啟動 {num_runs} 個任務，每次最多並行 {max_concurrent_runs} 個...")
+    threads = []
+    print(f"🚀 即將啟動 {num_runs} 個任務，每次最多並行 {max_concurrent_runs} 個...")
 
-        # 建立並啟動所有線程
-        for _ in range(num_runs):
-            # 將 playwright 實例傳遞給每個線程
-            thread = threading.Thread(target=thread_run, args=(playwright, uid, game_name))
-            threads.append(thread)
-            thread.start()
+    # 建立並啟動所有線程
+    for _ in range(num_runs):
+        # 不再需要傳遞 playwright 實例給執行緒
+        thread = threading.Thread(target=thread_run, args=(uid, game_name))
+        threads.append(thread)
+        thread.start()
 
-        # 等待所有線程執行完畢
-        for thread in threads:
-            thread.join()
+    # 等待所有線程執行完畢
+    for thread in threads:
+        thread.join()
 
     print("✅ 所有任務執行完畢！")
 
@@ -419,6 +412,7 @@ def main_logic():
 
 if __name__ == "__main__":
     main_logic()
+    input("\n任務已結束，請按 Enter 鍵關閉視窗...")
 
 
 
