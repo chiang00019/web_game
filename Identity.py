@@ -78,7 +78,7 @@ def check_game_info(page, expected_game_name, context, browser):
 
 def run(playwright: Playwright, uid: str, game_name: str) -> None:
     # 啟動 Chromium 瀏覽器（可見模式）
-    browser = playwright.chromium.launch(headless=True)
+    browser = playwright.chromium.launch(headless=False)
     # 建立新的瀏覽器上下文與分頁
     context = browser.new_context()
     page = context.new_page()
@@ -363,56 +363,75 @@ def check_balance(playwright: Playwright, num_runs: int, uid: str, game_name: st
 
 def main_logic():
     """主邏輯，包含使用者輸入、啟動線程與最終驗證。"""
-    # 簡易 CLI 輸入
-    num_runs = int(input("請輸入要執行的總次數："))
-    max_concurrent_runs = int(input("請輸入要同時執行的最大數量 (建議 3-5)："))
-    uid = input("請輸入 UID：")
-    game_name = input("請輸入遊戲角色名稱：")
-
-    # 在所有任務開始前，先用 Playwright 檢查餘額
-    with sync_playwright() as playwright:
-        if not check_balance(playwright, num_runs, uid, game_name):
-            return  # 如果餘額不足，直接結束 main_logic
-
-    # 建立信號量，限制同時運行的線程數量
-    semaphore = threading.Semaphore(max_concurrent_runs)
-
-    def thread_run(uid_str, game_name_str):
-        """每個線程要執行的目標函式"""
-        # 在執行前，先取得一個信號量 (如果計數為 0 則會在此等待)
-        semaphore.acquire()
+    while True:
         try:
-            # 每個執行緒都建立自己獨立的 Playwright 實例
-            # 確保執行緒之間互不干擾
-            with sync_playwright() as p:
-                run(p, uid_str, game_name_str)
-        finally:
-            # 確保無論成功或失敗，都會釋放信號量，讓下一個線程可以執行
-            semaphore.release()
+            # 簡易 CLI 輸入
+            num_runs = int(input("請輸入要執行的總次數："))
+            max_concurrent_runs = int(input("請輸入要同時執行的最大數量 (建議 3-5)："))
+            uid = input("請輸入 UID：")
+            game_name = input("請輸入遊戲角色名稱：")
 
-    threads = []
-    print(f"🚀 即將啟動 {num_runs} 個任務，每次最多並行 {max_concurrent_runs} 個...")
+            # 在所有任務開始前，先用 Playwright 檢查餘額
+            with sync_playwright() as playwright:
+                if not check_balance(playwright, num_runs, uid, game_name):
+                    # 如果餘額不足，不退出循環，而是直接跳到循環末尾的提問
+                    continue
 
-    # 建立並啟動所有線程
-    for _ in range(num_runs):
-        # 不再需要傳遞 playwright 實例給執行緒
-        thread = threading.Thread(target=thread_run, args=(uid, game_name))
-        threads.append(thread)
-        thread.start()
+            # 建立信號量，限制同時運行的線程數量
+            semaphore = threading.Semaphore(max_concurrent_runs)
 
-    # 等待所有線程執行完畢
-    for thread in threads:
-        thread.join()
+            def thread_run(uid_str, game_name_str):
+                """每個線程要執行的目標函式"""
+                # 在執行前，先取得一個信號量 (如果計數為 0 則會在此等待)
+                semaphore.acquire()
+                try:
+                    # 每個執行緒都建立自己獨立的 Playwright 實例
+                    # 確保執行緒之間互不干擾
+                    with sync_playwright() as p:
+                        run(p, uid_str, game_name_str)
+                finally:
+                    # 確保無論成功或失敗，都會釋放信號量，讓下一個線程可以執行
+                    semaphore.release()
 
-    print("✅ 所有任務執行完畢！")
+            threads = []
+            print(f"🚀 即將啟動 {num_runs} 個任務，每次最多並行 {max_concurrent_runs} 個...")
 
-    # --- 驗證截圖數量 ---
-    validate_screenshots(num_runs, game_name, uid)
+            # 建立並啟動所有線程
+            for _ in range(num_runs):
+                # 不再需要傳遞 playwright 實例給執行緒
+                thread = threading.Thread(target=thread_run, args=(uid, game_name))
+                threads.append(thread)
+                thread.start()
+
+            # 等待所有線程執行完畢
+            for thread in threads:
+                thread.join()
+
+            print("✅ 所有任務執行完畢！")
+
+            # --- 驗證截圖數量 ---
+            validate_screenshots(num_runs, game_name, uid)
+
+        except ValueError:
+            print("❌ 輸入錯誤，請確保您輸入的是有效的數字。請重新開始。")
+            continue
+        except Exception as e:
+            print(f"❌ 發生未預期的錯誤：{e}")
+            print("程式將嘗試重新開始...")
+            continue
+
+        # --- 詢問是否繼續 ---
+        print("\n" + "="*50)
+        choice = input("本輪任務已結束。\n- 直接按下 [Enter] 開始新的一輪。\n- 輸入 'q' 再按下 [Enter] 退出程式。\n請選擇：")
+        if choice.lower() == 'q':
+            break
+        print("="*50 + "\n")
 
 
 if __name__ == "__main__":
     main_logic()
-    input("\n任務已結束，請按 Enter 鍵關閉視窗...")
+    # 將等待關閉的 input 移到循環外部，確保只有在用戶選擇退出時才執行
+    print("\n程式已結束，感謝您的使用。")
 
 
 
