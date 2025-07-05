@@ -262,7 +262,7 @@ def check_balance(playwright: Playwright, num_runs: int, uid: str, game_name: st
         bool: 如果餘額充足則返回 True，否則返回 False。
     """
     print("--- 正在進行事前餘額檢查 ---")
-    browser = playwright.chromium.launch(headless=True)
+    browser = playwright.chromium.launch(headless=False)
     context = browser.new_context()
     page = context.new_page()
 
