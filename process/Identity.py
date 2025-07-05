@@ -84,7 +84,7 @@ def run(playwright: Playwright, uid: str, game_name: str) -> None:
     page = None
     try:
         # 啟動 Chromium 瀏覽器（可見模式）
-        browser = playwright.chromium.launch(headless=False)
+        browser = playwright.chromium.launch(headless=True)
         # 建立新的瀏覽器上下文與分頁
         context = browser.new_context()
         page = context.new_page()
@@ -273,7 +273,7 @@ def check_balance(playwright: Playwright, num_runs: int, uid: str, game_name: st
         bool: 如果餘額充足則返回 True，否則返回 False。
     """
     print("--- 正在進行事前餘額檢查 ---")
-    browser = playwright.chromium.launch(headless=False)
+    browser = playwright.chromium.launch(headless=True)
     context = browser.new_context()
     page = context.new_page()
 
