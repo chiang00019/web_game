@@ -15,30 +15,36 @@ topup_otp_code = os.getenv("TOPUP_OTP_CODE")
 
 screenshot_lock = threading.Lock()
 
-def take_screenshot(game_name, uid, page=None, element=None):
+def take_screenshot(game_name, uid, status, page=None, element=None):
     """
     截圖函式，可截取特定元素（element）或整頁（page）。
-    使用高精度時間戳確保檔名唯一。
+    根據狀態（status）將截圖存入 'success' 或 'error' 資料夾。
     """
+    # 根據狀態決定基礎資料夾
+    base_folder = os.path.join("screenshots", status)
+
     # 為本次執行建立唯一的子資料夾路徑
-    run_specific_folder = os.path.join("screenshots", f"{game_name}_{uid}")
+    run_specific_folder = os.path.join(base_folder, f"{game_name}_{uid}")
     os.makedirs(run_specific_folder, exist_ok=True)
 
     # 使用包含微秒的高精度時間戳來命名，避免衝突
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     filename = os.path.join(run_specific_folder, f"{timestamp}.png")
 
-    if element:
-        element.screenshot(path=filename)
-    elif page:
-        page.screenshot(path=filename, full_page=True)
-    else:
-        raise ValueError("必須傳入 page 或 element 作為截圖來源")
+    try:
+        if element:
+            element.screenshot(path=filename)
+        elif page:
+            page.screenshot(path=filename, full_page=True)
+        else:
+            raise ValueError("必須傳入 page 或 element 作為截圖來源")
 
-    print(f"✅ 已儲存截圖：{filename}")
+        print(f"✅ 已儲存 {status} 截圖：{filename}")
+    except Exception as e:
+        print(f"❌ 截圖時發生錯誤：{e}")
 
 
-def check_game_info(page, expected_game_name, context, browser):
+def check_game_info(page, expected_game_name):
     """
     從畫面抓取顯示的角色名稱，並比對是否與輸入一致。
     若不符，會自動關閉上下文與瀏覽器，並結束程式，避免誤付。
@@ -58,185 +64,190 @@ def check_game_info(page, expected_game_name, context, browser):
                 print("✅ 角色名稱匹配，繼續執行付款流程")
                 return True
             else:
-                print(f"❌ 角色名稱不符：抓取到「{name_part}」vs 預期「{expected_game_name}」")
-                # 資料不符，自動關閉並退出
-                context.close()
-                browser.close()
-                exit()
+                error_message = f"❌ 角色名稱不符：抓取到「{name_part}」vs 預期「{expected_game_name}」"
+                print(error_message)
+                raise ValueError(error_message)
         else:
-            print(f"⚠️ 抓取格式不符，無法解析：{text}")
-            context.close()
-            browser.close()
-            exit()
+            error_message = f"⚠️ 抓取格式不符，無法解析：{text}"
+            print(error_message)
+            raise ValueError(error_message)
 
     except Exception as e:
-        print(f"❌ 抓取失敗：{e}")
-        context.close()
-        browser.close()
-        exit()
+        error_message = f"❌ 抓取遊戲資訊時失敗：{e}"
+        print(error_message)
+        raise RuntimeError(error_message) from e
 
 
 def run(playwright: Playwright, uid: str, game_name: str) -> None:
-    # 啟動 Chromium 瀏覽器（可見模式）
-    browser = playwright.chromium.launch(headless=False)
-    # 建立新的瀏覽器上下文與分頁
-    context = browser.new_context()
-    page = context.new_page()
+    browser = None
+    context = None
+    page = None
+    try:
+        # 啟動 Chromium 瀏覽器（可見模式）
+        browser = playwright.chromium.launch(headless=False)
+        # 建立新的瀏覽器上下文與分頁
+        context = browser.new_context()
+        page = context.new_page()
 
-    # 1. 前往充值頁面
-    page.goto("https://pay.neteasegames.com/identityv/topup/")
+        # 1. 前往充值頁面
+        page.goto("https://pay.neteasegames.com/identityv/topup/")
 
-    # 2. 點擊「Japan - 日本語」切換語言
-    page.wait_for_selector("text=Japan - 日本語", timeout=10000)
-    page.get_by_text("Japan - 日本語").click()
+        # 2. 點擊「Japan - 日本語」切換語言
+        page.wait_for_selector("text=Japan - 日本語", timeout=10000)
+        page.get_by_text("Japan - 日本語").click()
 
-    # 3. 打開國家下拉選單並選擇「Philippines」
-    page.wait_for_selector("#rc_select_1", timeout=10000)
-    page.locator("#rc_select_1").click()
-    page.wait_for_selector("text=Philippines", timeout=10000)
-    page.get_by_text("Philippines").click()
+        # 3. 打開國家下拉選單並選擇「Philippines」
+        page.wait_for_selector("#rc_select_1", timeout=10000)
+        page.locator("#rc_select_1").click()
+        page.wait_for_selector("text=Philippines", timeout=10000)
+        page.get_by_text("Philippines").click()
 
-    # 4. 切回「中文（繁體）」
-    page.wait_for_selector("text=中文（繁體）", timeout=10000)
-    page.get_by_text("中文（繁體）").click()
+        # 4. 切回「中文（繁體）」
+        page.wait_for_selector("text=中文（繁體）", timeout=10000)
+        page.get_by_text("中文（繁體）").click()
 
-    # 5. 點擊「角色ID登入」
-    page.wait_for_selector("text=角色ID登入", timeout=10000)
-    page.get_by_text("角色ID登入").click()
+        # 5. 點擊「角色ID登入」
+        page.wait_for_selector("text=角色ID登入", timeout=10000)
+        page.get_by_text("角色ID登入").click()
 
-    # 6. 打開伺服器下拉，選擇「Asia」
-    page.wait_for_selector("#rc_select_0", timeout=10000)
-    page.locator("#rc_select_0").click()
-    page.wait_for_selector("text=Asia", timeout=10000)
-    page.get_by_text("Asia").click()
+        # 6. 打開伺服器下拉，選擇「Asia」
+        page.wait_for_selector("#rc_select_0", timeout=10000)
+        page.locator("#rc_select_0").click()
+        page.wait_for_selector("text=Asia", timeout=10000)
+        page.get_by_text("Asia").click()
 
-    # 7. 填入遊戲 ID
-    textbox = page.get_by_role("textbox", name="請輸入遊戲ID")
-    textbox.wait_for(state="visible", timeout=10000)
-    textbox.click()
-    textbox.fill(uid)
+        # 7. 填入遊戲 ID
+        textbox = page.get_by_role("textbox", name="請輸入遊戲ID")
+        textbox.wait_for(state="visible", timeout=10000)
+        textbox.click()
+        textbox.fill(uid)
 
-    # 8. 勾選同意隱私政策和用戶協議
-    checkbox = page.get_by_role(
-        "checkbox",
-        name="我已閱讀並同意《隱私政策》 和 《用戶協議》。"
-    )
-    checkbox.wait_for(state="attached", timeout=10000)
-    checkbox.check()
+        # 8. 勾選同意隱私政策和用戶協議
+        checkbox = page.get_by_role(
+            "checkbox",
+            name="我已閱讀並同意《隱私政策》 和 《用戶協議》。"
+        )
+        checkbox.wait_for(state="attached", timeout=10000)
+        checkbox.check()
 
-    # 9. 點擊「登 入」按鈕提交
-    button = page.get_by_role("button", name="登 入")
-    button.wait_for(state="visible", timeout=10000)
-    button.click()
+        # 9. 點擊「登 入」按鈕提交
+        button = page.get_by_role("button", name="登 入")
+        button.wait_for(state="visible", timeout=10000)
+        button.click()
 
-    # 10. 檢查畫面上的遊戲資訊是否正確
-    check_game_info(page, game_name, context, browser)
+        # 10. 檢查畫面上的遊戲資訊是否正確
+        check_game_info(page, game_name)
 
-    # 11. 點擊 NetEase Credit 圖示，等待新分頁彈出
-    credit_icon = page.get_by_role("img", name="NetEase Credit")
-    credit_icon.wait_for(state="visible", timeout=10000)
-    with page.expect_popup() as page1_info:
-        credit_icon.click()
-    page1 = page1_info.value
+        # 11. 點擊 NetEase Credit 圖示，等待新分頁彈出
+        credit_icon = page.get_by_role("img", name="NetEase Credit")
+        credit_icon.wait_for(state="visible", timeout=10000)
+        with page.expect_popup() as page1_info:
+            credit_icon.click()
+        page1 = page1_info.value
 
-    # 12. 在新分頁填入帳號與密碼
-    account_input = page1.locator("input[name=\"account\"]")
-    account_input.wait_for(state="visible", timeout=100000)
-    account_input.click()
-    account_input.fill(topup_account)
+        # 12. 在新分頁填入帳號與密碼
+        account_input = page1.locator("input[name=\"account\"]")
+        account_input.wait_for(state="visible", timeout=100000)
+        account_input.click()
+        account_input.fill(topup_account)
 
-    password_input = page1.locator("input[name=\"hash_password\"]")
-    password_input.wait_for(state="visible", timeout=10000)
-    password_input.click()
-    password_input.fill(topup_password)
+        password_input = page1.locator("input[name=\"hash_password\"]")
+        password_input.wait_for(state="visible", timeout=10000)
+        password_input.click()
+        password_input.fill(topup_password)
 
-    # 13. 點擊「登入」按鈕
-    login_btn = page1.locator("div").filter(has_text=re.compile(r"^登入$")).nth(2)
-    login_btn.wait_for(state="attached", timeout=10000)
-    login_btn.click()
+        # 13. 點擊「登入」按鈕
+        login_btn = page1.locator("div").filter(has_text=re.compile(r"^登入$")).nth(2)
+        login_btn.wait_for(state="attached", timeout=10000)
+        login_btn.click()
 
-    # 14. 等待 NetEase Credit 分頁自動關閉
-    page1.wait_for_event("close")
+        # 14. 等待 NetEase Credit 分頁自動關閉
+        page1.wait_for_event("close")
 
-    # 15. 回到主頁，選擇金額（這裡點擊顯示「499.」的第二個選項）
-    amount_btn = page.get_by_text("499.").nth(1)
-    amount_btn.wait_for(state="attached", timeout=10000)
-    amount_btn.click()
+        # 15. 回到主頁，選擇金額（這裡點擊顯示「499.」的第二個選項）
+        amount_btn = page.get_by_text("499.").nth(1)
+        amount_btn.wait_for(state="attached", timeout=10000)
+        amount_btn.click()
 
-    # 16. 勾選 NetEase Pay 付款方式
-    pay_checkbox = page.get_by_role("checkbox", name="NetEase Pay")
-    pay_checkbox.wait_for(state="attached", timeout=10000)
-    pay_checkbox.check()
+        # 16. 勾選 NetEase Pay 付款方式
+        pay_checkbox = page.get_by_role("checkbox", name="NetEase Pay")
+        pay_checkbox.wait_for(state="attached", timeout=10000)
+        pay_checkbox.check()
 
-    # 17. 點擊「儲 值」按鈕發起支付
-    topup_btn = page.get_by_role("button", name="儲 值")
-    topup_btn.wait_for(state="visible", timeout=10000)
-    topup_btn.click()
+        # 17. 點擊「儲 值」按鈕發起支付
+        topup_btn = page.get_by_role("button", name="儲 值")
+        topup_btn.wait_for(state="visible", timeout=10000)
+        topup_btn.click()
 
-    # 18. 驗證 OTP 碼長度是否為 6 碼
-    if len(topup_otp_code) != 6:
-        raise ValueError("驗證碼長度不正確，請確認 .env 設定")
+        # 18. 驗證 OTP 碼長度是否為 6 碼
+        if len(topup_otp_code) != 6:
+            raise ValueError("驗證碼長度不正確，請確認 .env 設定")
 
-    # 19a. 等待第一個 OTP input 出現 (也就是 DOM 裡有任何一個 maxlength=1 的 text input)
-    page.wait_for_selector("input[type='text'][maxlength='1']", timeout=20000)
+        # 19a. 等待第一個 OTP input 出現 (也就是 DOM 裡有任何一個 maxlength=1 的 text input)
+        page.wait_for_selector("input[type='text'][maxlength='1']", timeout=20000)
 
-    # 19b. 拿到所有 maxlength=1 的 input（應該就是 6 個 OTP 欄位）
-    otp_fields = page.locator("input[type='text'][maxlength='1']")
-    count = otp_fields.count()
-    if count < 6:
-        raise ValueError(f"OTP 欄位數量不足 (找到 {count} 個，但需要 6 個)")
+        # 19b. 拿到所有 maxlength=1 的 input（應該就是 6 個 OTP 欄位）
+        otp_fields = page.locator("input[type='text'][maxlength='1']")
+        count = otp_fields.count()
+        if count < 6:
+            raise ValueError(f"OTP 欄位數量不足 (找到 {count} 個，但需要 6 個)")
 
-    # 19c. 逐一滾動並填入
-    for i, digit in enumerate(topup_otp_code):
-        field = otp_fields.nth(i)
-        # 確保欄位已經 attach 到 DOM
-        field.wait_for(state="attached", timeout=5000)
-        # 把它滾進可見範圍（避免在畫面外點不到）
-        field.scroll_into_view_if_needed()
-        # 填入單一數字
-        field.fill(digit)
-    # --- OTP 欄位填寫段落 end ---
-
-
-    # 20. 點擊「確 定」完成 OTP 驗證
-    confirm_btn = page.get_by_role("button", name="確 定")
-    confirm_btn.wait_for(state="visible", timeout=10000)
-    confirm_btn.click()
-
-    # 21. 點擊「查看訂單」確認訂單狀態
-    view_order_btn = page.get_by_role("button", name="查看訂單")
-    view_order_btn.wait_for(state="visible", timeout=10000)
-    view_order_btn.click()
-
-    # 22. 定位「支付成功」訊息框，並截圖
-    pattern = re.compile(
-        rf"支付成功.*角色：{re.escape(game_name)} \({re.escape(uid)}\).*伺服器：Asia"
-    )
-    success_box = page.locator("div").filter(has_text=pattern).nth(2)
-    success_box.wait_for(state="visible", timeout=10000)
-    take_screenshot(game_name, uid, element=success_box)
-
-    # 23. 最後再點一次「確 定」關閉成功提示
-    final_confirm = page.get_by_role("button", name="確 定")
-    final_confirm.wait_for(state="visible", timeout=10000)
-    final_confirm.click()
+        # 19c. 逐一滾動並填入
+        for i, digit in enumerate(topup_otp_code):
+            field = otp_fields.nth(i)
+            # 確保欄位已經 attach 到 DOM
+            field.wait_for(state="attached", timeout=5000)
+            # 把它滾進可見範圍（避免在畫面外點不到）
+            field.scroll_into_view_if_needed()
+            # 填入單一數字
+            field.fill(digit)
+        # --- OTP 欄位填寫段落 end ---
 
 
-    # ---------------------
-    context.close()
-    browser.close()
+        # 20. 點擊「確 定」完成 OTP 驗證
+        confirm_btn = page.get_by_role("button", name="確 定")
+        confirm_btn.wait_for(state="visible", timeout=10000)
+        confirm_btn.click()
+
+        # 21. 點擊「查看訂單」確認訂單狀態
+        view_order_btn = page.get_by_role("button", name="查看訂單")
+        view_order_btn.wait_for(state="visible", timeout=10000)
+        view_order_btn.click()
+
+        # 22. 定位「支付成功」訊息框，並截圖
+        pattern = re.compile(
+            rf"支付成功.*角色：{re.escape(game_name)} \({re.escape(uid)}\).*伺服器：Asia"
+        )
+        success_box = page.locator("div").filter(has_text=pattern).nth(2)
+        success_box.wait_for(state="visible", timeout=10000)
+        take_screenshot(game_name, uid, "success", element=success_box)
+
+        # 23. 最後再點一次「確 定」關閉成功提示
+        final_confirm = page.get_by_role("button", name="確 定")
+        final_confirm.wait_for(state="visible", timeout=10000)
+        final_confirm.click()
+
+    except Exception as e:
+        print(f"❌ 執行過程中發生錯誤：{e}")
+        if page:
+            take_screenshot(game_name, uid, "error", page=page)
+    finally:
+        if context:
+            context.close()
+        if browser:
+            browser.close()
 
 def validate_screenshots(expected_count, game_name, uid):
     """驗證截圖數量是否與預期相符。"""
-    # 直接指向為本次執行建立的子資料夾
-    run_specific_folder = os.path.join("screenshots", f"{game_name}_{uid}")
+    # 現在只檢查 'success' 資料夾
+    success_folder = os.path.join("screenshots", "success", f"{game_name}_{uid}")
     actual_count = 0
 
     try:
         # 檢查子資料夾是否存在
-        if os.path.isdir(run_specific_folder):
+        if os.path.isdir(success_folder):
             # 計算子資料夾中所有 .png 檔案的數量
-            all_files_in_subdir = os.listdir(run_specific_folder)
+            all_files_in_subdir = os.listdir(success_folder)
             run_screenshots = [f for f in all_files_in_subdir if f.endswith(".png")]
             actual_count = len(run_screenshots)
 
