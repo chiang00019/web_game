@@ -27,7 +27,7 @@ def take_screenshot(game_name, uid, page=None, element=None):
     # 使用包含微秒的高精度時間戳來命名，避免衝突
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     filename = os.path.join(run_specific_folder, f"{timestamp}.png")
-
+qwreqer
     if element:
         element.screenshot(path=filename)
     elif page:
@@ -76,7 +76,7 @@ def check_game_info(page, expected_game_name, context, browser):
         exit()
 
 
-def run(playwright: Playwright, uid: str, game_name: str) -> None:
+def run(playwright: Playwright, uid: str, game_name: str, amount: ENUM) -> None:
     # 啟動 Chromium 瀏覽器（可見模式）
     browser = playwright.chromium.launch(headless=False)
     # 建立新的瀏覽器上下文與分頁
