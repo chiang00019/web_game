@@ -1,3 +1,5 @@
+import Image from 'next/image';
+
 export default function HomePage() {
   return (
     <main className="flex flex-col items-center justify-start min-h-screen bg-white px-4">
@@ -6,7 +8,7 @@ export default function HomePage() {
         
         {/* 主標題 */}
         <h1 className="text-3xl xs:text-4xl sm:text-5xl font-bold mb-6 leading-tight">
-          水豚移動代儲網
+          YH移動代儲網
         </h1>
 
         {/* 副標題 */}
@@ -27,10 +29,10 @@ export default function HomePage() {
         {/* 用戶頭像 + 信任文字 */}
         <div className="mt-10 flex flex-col items-center">
           <div className="flex -space-x-4">
-            <img src="https://randomuser.me/api/portraits/women/1.jpg" alt="User1" className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-white" />
-            <img src="https://randomuser.me/api/portraits/women/2.jpg" alt="User2" className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-white" />
-            <img src="https://randomuser.me/api/portraits/men/1.jpg" alt="User3" className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-white" />
-            <img src="https://randomuser.me/api/portraits/men/2.jpg" alt="User4" className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-white" />
+            <Image src="https://randomuser.me/api/portraits/women/1.jpg" alt="User1" className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-white" width={48} height={48} />
+            <Image src="https://randomuser.me/api/portraits/women/2.jpg" alt="User2" className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-white" width={48} height={48} />
+            <Image src="https://randomuser.me/api/portraits/men/1.jpg" alt="User3" className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-white" width={48} height={48} />
+            <Image src="https://randomuser.me/api/portraits/men/2.jpg" alt="User4" className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-white" width={48} height={48} />
           </div>
           <p className="text-sm xs:text-base text-gray-500 mt-3">
             經營一年 完成破萬筆訂單 安全放心
