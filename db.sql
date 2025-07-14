@@ -1,20 +1,53 @@
 -- This script can be executed repeatedly to reset the database schema.
 -- It first drops all tables in the correct order and then recreates them.
 
--- ========= DROP TABLES =========
--- Drop tables with CASCADE to automatically handle foreign key dependencies.
+-- ========= DROP DEPENDENCIES (in correct order) =========
+-- 1. Drop functions that might be used by other functions or policies first.
+DROP FUNCTION IF EXISTS public.get_top_customers(integer, text, text);
+
+-- 2. Drop triggers, which depend on functions and tables.
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+DROP TRIGGER IF EXISTS on_order_updated ON public."order";
+
+-- 3. Drop policies that depend on functions.
+DROP POLICY IF EXISTS "Admins can access all profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Admins can access all orders" ON public."order";
+DROP POLICY IF EXISTS "Admins can manage games" ON public.game;
+DROP POLICY IF EXISTS "Admins can manage game packages" ON public.game_packages;
+DROP POLICY IF EXISTS "Admins can manage payment methods" ON public.payment_method;
+DROP POLICY IF EXISTS "Admins can manage banners" ON public.banner;
+
+-- 4. Drop the rest of the functions.
+DROP FUNCTION IF EXISTS public.handle_new_user();
+DROP FUNCTION IF EXISTS public.handle_updated_at();
+DROP FUNCTION IF EXISTS public.is_admin();
+
+-- 5. Drop tables. CASCADE handles foreign key constraints and other dependencies.
 DROP TABLE IF EXISTS public."order" CASCADE;
 DROP TABLE IF EXISTS public.allow_payment_method CASCADE;
 DROP TABLE IF EXISTS public.use CASCADE;
-DROP TABLE IF EXISTS public.is_admin CASCADE;
+DROP TABLE IF EXISTS public.profiles CASCADE;
+DROP TABLE IF EXISTS public.game_packages CASCADE;
 DROP TABLE IF EXISTS public.game CASCADE;
 DROP TABLE IF EXISTS public.payment_method CASCADE;
 DROP TABLE IF EXISTS public.add_value_process CASCADE;
+DROP TABLE IF EXISTS public.banner CASCADE;
+
+-- 6. Drop custom types, which are used by tables.
+DROP TYPE IF EXISTS public.order_status;
+
+
+-- ========= CREATE TYPES =========
+CREATE TYPE public.order_status AS ENUM (
+  'pending',
+  'processing',
+  'completed',
+  'failed',
+  'refunded'
+);
 
 
 -- ========= CREATE TABLES =========
--- Create tables that do not have foreign key dependencies first.
--- Using SERIAL type to automatically create sequences for auto-incrementing IDs.
 CREATE TABLE public.game (
   game_id SERIAL PRIMARY KEY,
   game_name text NOT NULL,
@@ -33,31 +66,49 @@ CREATE TABLE public.add_value_process (
   script text
 );
 
--- Create the is_admin table, linked to Supabase Auth.
-CREATE TABLE public.is_admin (
+CREATE TABLE public.banner (
+  banner_id SERIAL PRIMARY KEY,
+  title text,
+  content text,
+  image_url text,
+  link_url text,
+  is_active boolean DEFAULT true,
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE public.game_packages (
+  package_id SERIAL PRIMARY KEY,
+  game_id integer NOT NULL REFERENCES public.game(game_id),
+  name text NOT NULL,
+  description text,
+  price numeric NOT NULL,
+  is_active boolean DEFAULT true
+);
+
+CREATE TABLE public.profiles (
   user_id uuid NOT NULL PRIMARY KEY,
   is_admin boolean DEFAULT false,
-  CONSTRAINT "is_admin_user_id_fkey" FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
-);
-COMMENT ON TABLE public.is_admin IS 'Stores user admin status.';
-
--- Create tables that have foreign key dependencies.
-CREATE TABLE public.order (
-  order_id SERIAL PRIMARY KEY,
-  user_id uuid, -- IMPORTANT: Matches the is_admin table's uuid type.
-  game_id integer,
-  payment_method_id integer,
-  amount numeric,
+  user_name text,
   line_username text,
   phone_no text,
+  CONSTRAINT "profiles_user_id_fkey" FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+);
+COMMENT ON TABLE public.profiles IS 'Stores user profiles and admin status.';
+
+CREATE TABLE public."order" (
+  order_id SERIAL PRIMARY KEY,
+  user_id uuid NOT NULL REFERENCES public.profiles(user_id),
+  game_id integer REFERENCES public.game(game_id),
+  package_id integer REFERENCES public.game_packages(package_id),
+  payment_method_id integer REFERENCES public.payment_method(payment_method_id),
+  status public.order_status DEFAULT 'pending',
   is_adv boolean DEFAULT false,
   game_uid text,
   game_server text,
   game_username text,
   note text,
-  CONSTRAINT order_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.is_admin(user_id),
-  CONSTRAINT order_payment_method_id_fkey FOREIGN KEY (payment_method_id) REFERENCES public.payment_method(payment_method_id),
-  CONSTRAINT order_game_id_fkey FOREIGN KEY (game_id) REFERENCES public.game(game_id)
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz
 );
 
 CREATE TABLE public.allow_payment_method (
@@ -77,32 +128,121 @@ CREATE TABLE public.use (
 );
 
 
--- ========= SYNC USER DATA =========
--- Function and Trigger to automatically copy new users from auth.users to public.is_admin
+-- ========= INDEXES FOR PERFORMANCE =========
+CREATE INDEX ON public."order" (user_id);
+CREATE INDEX ON public."order" (game_id);
+CREATE INDEX ON public."order" (status);
+CREATE INDEX ON public.profiles (user_name);
+CREATE INDEX ON public.game_packages (game_id);
+
+
+-- ========= FUNCTIONS & TRIGGERS =========
+
+CREATE OR REPLACE FUNCTION public.handle_updated_at()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER on_order_updated BEFORE UPDATE ON public."order" FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 
 CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-SECURITY DEFINER SET search_path = public
-AS $$
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
-  -- Insert the new user's ID into the is_admin table.
-  -- is_admin will default to false.
-  INSERT INTO public.is_admin (user_id)
-  VALUES (new.id);
+  INSERT INTO public.profiles (user_id, user_name)
+  VALUES (new.id, new.raw_user_meta_data->>'user_name');
   RETURN new;
 END;
 $$;
 
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 
--- Insert existing users from auth.users into public.is_admin
-INSERT INTO public.is_admin (user_id)
-SELECT 
-    id
-FROM 
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS boolean LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
+  SELECT is_admin FROM public.profiles WHERE user_id = auth.uid();
+$$;
+
+
+-- ========= ROW LEVEL SECURITY (RLS) =========
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public."order" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.game ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.game_packages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.payment_method ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.banner ENABLE ROW LEVEL SECURITY;
+
+-- Policies
+CREATE POLICY "Users can view their own profile" ON public.profiles FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can view their own orders" ON public."order" FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can create their own orders" ON public."order" FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Publicly readable tables" ON public.game FOR SELECT USING (true);
+CREATE POLICY "Publicly readable packages" ON public.game_packages FOR SELECT USING (true);
+CREATE POLICY "Publicly readable payments" ON public.payment_method FOR SELECT USING (true);
+CREATE POLICY "Publicly readable banners" ON public.banner FOR SELECT USING (true);
+
+-- Admin policies
+CREATE POLICY "Admins can access all profiles" ON public.profiles FOR ALL USING (public.is_admin());
+CREATE POLICY "Admins can access all orders" ON public."order" FOR ALL USING (public.is_admin());
+CREATE POLICY "Admins can manage games" ON public.game FOR ALL USING (public.is_admin());
+CREATE POLICY "Admins can manage game packages" ON public.game_packages FOR ALL USING (public.is_admin());
+CREATE POLICY "Admins can manage payment methods" ON public.payment_method FOR ALL USING (public.is_admin());
+CREATE POLICY "Admins can manage banners" ON public.banner FOR ALL USING (public.is_admin());
+
+
+-- ========= RPC FOR REPORTS =========
+
+CREATE OR REPLACE FUNCTION public.get_top_customers(
+    p_game_id integer DEFAULT NULL,
+    p_start_date text DEFAULT NULL,
+    p_end_date text DEFAULT NULL
+)
+RETURNS TABLE (
+    user_id uuid,
+    user_name text,
+    total_spending numeric,
+    total_orders bigint,
+    avg_order_value numeric,
+    last_purchase timestamptz
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        p.user_id,
+        p.user_name,
+        SUM(pkg.price) AS total_spending,
+        COUNT(o.order_id) AS total_orders,
+        AVG(pkg.price) AS avg_order_value,
+        MAX(o.created_at) AS last_purchase
+    FROM
+        public."order" AS o
+    JOIN
+        public.profiles AS p ON o.user_id = p.user_id
+    JOIN
+        public.game_packages AS pkg ON o.package_id = pkg.package_id
+    WHERE
+        o.status = 'completed'
+        AND (p_game_id IS NULL OR o.game_id = p_game_id)
+        AND (p_start_date IS NULL OR o.created_at >= p_start_date::timestamptz)
+        AND (p_end_date IS NULL OR o.created_at <= p_end_date::timestamptz)
+    GROUP BY
+        p.user_id, p.user_name
+    ORDER BY
+        total_spending DESC;
+END;
+$$;
+
+
+-- ========= INITIAL DATA SYNC =========
+INSERT INTO public.profiles (user_id, user_name)
+SELECT
+    id,
+    raw_user_meta_data->>'user_name'
+FROM
     auth.users
-ON CONFLICT (user_id) DO NOTHING;
+ON CONFLICT (user_id) DO UPDATE SET
+    user_name = EXCLUDED.user_name;

@@ -1,3 +1,4 @@
+
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
@@ -36,13 +37,17 @@ export async function updateSession(request: NextRequest) {
     }
 
     const { data: profile, error } = await supabase
-      .from('is_admin')
+      .from('profiles')
       .select('is_admin')
       .eq('user_id', user.id)
       .single();
 
+    // If user is not an admin, redirect to home page with an error message
     if (error || !profile || !profile.is_admin) {
-      return NextResponse.redirect(new URL('/', request.url)); // Redirect non-admins to home
+      const redirectUrl = new URL('/', request.url);
+      redirectUrl.searchParams.set('error', 'admin_only');
+      redirectUrl.searchParams.set('error_description', '此頁面僅限管理員存取');
+      return NextResponse.redirect(redirectUrl);
     }
   }
 

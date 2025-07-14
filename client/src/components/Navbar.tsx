@@ -12,8 +12,12 @@ export default function Navbar() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    // Force a reload to clear all state and redirect to the auth page
     router.push('/auth');
+    router.refresh();
   };
+
+  const displayName = profile?.user_name || user?.email;
 
   return (
     <nav className="bg-white shadow-md">
@@ -21,15 +25,15 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
             <Link href="/" className="text-2xl font-bold text-blue-600">
-              GameStore
+              YH工作坊
             </Link>
             <div className="hidden md:block">
               <div className="ml-10 flex items-baseline space-x-4">
-                <Link href="/shop" className="text-gray-600 hover:bg-gray-100 px-3 py-2 rounded-md text-sm font-medium">
+                <Link href="/shop" className="text-gray-800 hover:bg-gray-100 px-3 py-2 rounded-md text-sm font-medium">
                   商店
                 </Link>
                 {profile?.is_admin && (
-                  <Link href="/admin" className="text-gray-600 hover:bg-gray-100 px-3 py-2 rounded-md text-sm font-medium">
+                  <Link href="/admin" className="text-gray-800 hover:bg-gray-100 px-3 py-2 rounded-md text-sm font-medium">
                     管理後台
                   </Link>
                 )}
@@ -38,20 +42,22 @@ export default function Navbar() {
           </div>
           <div className="hidden md:block">
             <div className="ml-4 flex items-center md:ml-6">
-              {!loading && (
+              {loading ? (
+                <div className="animate-pulse h-8 w-24 bg-gray-200 rounded-md"></div>
+              ) : (
                 <>
                   {user ? (
-                    <div className="ml-3 relative">
-                      <span className="text-gray-800 text-sm font-medium mr-4">歡迎, {user.email}</span>
+                    <div className="ml-3 relative flex items-center">
+                      <span className="text-gray-800 text-sm font-medium mr-4">歡迎, {displayName}</span>
                       <button
                         onClick={handleLogout}
-                        className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+                        className="bg-white hover:bg-gray-100 text-red-600 px-4 py-2 rounded-md text-sm font-medium transition-colors border border-red-600"
                       >
                         登出
                       </button>
                     </div>
                   ) : (
-                    <Link href="/auth" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                    <Link href="/auth" className="bg-white hover:bg-gray-100 text-blue-600 px-4 py-2 rounded-md text-sm font-medium border border-blue-600">
                       登入 / 註冊
                     </Link>
                   )}

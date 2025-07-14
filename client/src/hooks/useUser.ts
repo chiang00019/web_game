@@ -3,11 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import type { User } from '@supabase/supabase-js';
-
-interface Profile {
-  is_admin: boolean;
-  // Add other profile fields here
-}
+import type { Profile } from '@/types/database'; // Import the central Profile type
 
 export function useUser() {
   const supabase = createClient();
@@ -16,14 +12,15 @@ export function useUser() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchUser = async () => {
+    const fetchUserAndProfile = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
 
       if (user) {
+        // Fetch from the new 'profiles' table
         const { data: profileData, error } = await supabase
-          .from('is_admin')
-          .select('is_admin')
+          .from('profiles')
+          .select('*') // Fetch all profile data
           .eq('user_id', user.id)
           .single();
         
@@ -36,13 +33,19 @@ export function useUser() {
       setLoading(false);
     };
 
-    fetchUser();
+    fetchUserAndProfile();
 
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-      if (event === 'SIGNED_IN' && session?.user) {
-        fetchUser();
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      
+      // When user signs in or session is refreshed, fetch their profile
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        if (currentUser) {
+          fetchUserAndProfile();
+        }
       } else if (event === 'SIGNED_OUT') {
+        // Clear profile on sign out
         setProfile(null);
       }
     });
