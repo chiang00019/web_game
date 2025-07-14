@@ -11,6 +11,7 @@ export default function AuthForm() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [userName, setUserName] = useState('');
   const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const supabase = createClient();
@@ -18,33 +19,29 @@ export default function AuthForm() {
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage('');
+    setError('');
     setLoading(true);
 
     if (!isLogin && password !== confirmPassword) {
-      setMessage('密碼不相符');
+      setError('密碼不相符');
       setLoading(false);
       return;
     }
 
     try {
       if (isLogin) {
-        // 登入
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
 
         if (error) {
-          setMessage(`登入錯誤：${error.message}`);
+          setError(`登入錯誤：${error.message}`);
         } else {
-          setMessage('登入成功！');
-          // 等待一小段時間讓認證狀態更新
-          setTimeout(() => {
-            router.push('/');
-          }, 500);
+          setMessage('登入成功！正在跳轉...');
+          router.push('/');
         }
       } else {
-        // 註冊
         const { error } = await supabase.auth.signUp({
           email,
           password,
@@ -56,16 +53,35 @@ export default function AuthForm() {
         });
 
         if (error) {
-          setMessage(`註冊錯誤：${error.message}`);
+          setError(`註冊錯誤：${error.message}`);
         } else {
           setMessage('註冊成功！請檢查您的電子郵件以進行驗證。');
         }
       }
     } catch (error) {
-      setMessage(`發生未知錯誤：${error}`);
+      setError(`發生未知錯誤：${error}`);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePasswordReset = async () => {
+    setMessage('');
+    setError('');
+    if (!email) {
+      setError('請輸入您的電子郵件地址以重設密碼');
+      return;
+    }
+    setLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/callback?next=/auth/update-password`,
+    });
+    if (error) {
+      setError(error.message);
+    } else {
+      setMessage('密碼重設郵件已發送');
+    }
+    setLoading(false);
   };
 
   return (
@@ -150,24 +166,46 @@ export default function AuthForm() {
           )}
         </button>
       </form>
+      {error && (
+        <p className="mt-4 text-center text-sm text-red-500">
+          {error}
+        </p>
+      )}
       {message && (
-        <p className={`mt-4 text-center text-sm ${
-          message.includes('成功') || message.includes('Success') 
-            ? 'text-green-600' 
-            : 'text-red-500'
-        }`}>
+        <p className="mt-4 text-center text-sm text-green-600">
           {message}
         </p>
       )}
-      <p className="mt-6 text-center text-sm">
-        {isLogin ? '還沒有帳號嗎？' : '已經有帳號了？'}
-        <button
-          onClick={() => setIsLogin(!isLogin)}
-          className="font-medium text-blue-600 hover:text-blue-500 ml-1"
-        >
-          {isLogin ? '立即註冊' : '立即登入'}
-        </button>
-      </p>
+      <div className="mt-6 text-center text-sm">
+        {isLogin ? (
+          <>
+            <span>還沒有帳號嗎？ </span>
+            <button
+              onClick={() => setIsLogin(false)}
+              className="font-medium text-blue-600 hover:text-blue-500"
+            >
+              立即註冊
+            </button>
+            <span className="mx-2">|</span>
+            <button
+              onClick={handlePasswordReset}
+              className="font-medium text-blue-600 hover:text-blue-500"
+            >
+              忘記密碼？
+            </button>
+          </>
+        ) : (
+          <>
+            <span>已經有帳號了？ </span>
+            <button
+              onClick={() => setIsLogin(true)}
+              className="font-medium text-blue-600 hover:text-blue-500"
+            >
+              立即登入
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
 }
