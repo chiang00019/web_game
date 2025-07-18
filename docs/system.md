@@ -4,6 +4,15 @@
 
 本專案是一個基於 Next.js、TypeScript 和 Supabase 的遊戲儲值網站。採用 Serverless 架構，前端負責渲染與使用者互動，後端邏輯則透過 Next.js API Routes 和 Supabase 服務實現。
 
+### 技術棧 (Technical Stack)
+
+- **框架 (Framework):** [Next.js](https://nextjs.org/)
+- **語言 (Language):** [TypeScript](https://www.typescriptlang.org/)
+- **後端 & 資料庫 (Backend & Database):** [Supabase](https://supabase.com/)
+- **樣式 (Styling):** [Tailwind CSS](https://tailwindcss.com/)
+- **部署 (Deployment):** [Vercel](https://vercel.com/)
+- **設計 (Design):** 響應式網站設計 (RWD)，確保在桌面和行動裝置上都有一致的使用體驗。
+
 ## 檔案架構
 
 ```
@@ -64,6 +73,11 @@ client/
     *   `app/admin/orders/page.tsx`: 訂單管理頁面。
     *   `app/api/orders/route.ts`: 處理訂單資料庫操作的 API。
     *   `components/admin/OrderList.tsx`: 顯示訂單列表的組件。
+    *   訂單會有status
+        *   pending: 下單但是還沒付錢
+        *   paid: 下單並且付錢了
+        *   我目前希望這個是交給admin修正，因為我想要user跟admin直接聯絡下單的使用者付款，admin人工確認到款項後到訂單管理的頁面將訂單從pending按到paid
+    *   訂單從pending到paid的狀態時，會觸發這個game的script，執行自動化做儲值的動作 -> 這部分留一個hook就好，後續再進行實作
 
 ### 5. 核心邏輯與類型 (Core Logic & Types)
 *   **描述:** 存放整個專案共用的程式碼，包括自定義 Hooks、Supabase 客戶端設定和 TypeScript 類型定義。
