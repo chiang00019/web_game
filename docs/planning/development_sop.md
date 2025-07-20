@@ -31,16 +31,17 @@
 
 ## Phase 1: 使用者驗證 (Authentication)
 
-**目標:** 建立完整的登入、註冊、登出功能，並區分管理員與一般使用者。
+**目標:** 建立完整的登入、註冊、登出功能，並整合密碼重設、電子郵件驗證等進階選項。
 
 1.  **建立 Supabase Client:**
     *   在 `lib/supabase/client.ts` 中，建立並導出 Supabase 的客戶端實例。
     *   在 `utils/supabase/middleware.ts` 中，設定中介軟體以處理 server-side 的驗證。
 2.  **建立驗證 UI:**
     *   在 `components/auth/` 中建立 `AuthForm.tsx` 組件，包含登入/註冊的表單邏輯。
+    *   建立獨立的忘記密碼頁面 (`/auth/forgot-password`)。
     *   在 `app/auth/page.tsx` 中使用 `AuthForm.tsx`，完成驗證頁面。
 3.  **實現 API 路由:**
-    *   在 `app/api/auth/` 下建立必要的路由 (e.g., `login`, `register`, `logout`) 來處理 Supabase 的驗證邏輯。
+    *   在 `app/api/auth/` 下建立必要的路由 (e.g., `login`, `register`, `logout`, `reset-password`) 來處理 Supabase 的驗證邏輯。
 4.  **實現 Navbar 狀態:**
     *   建立一個 Navbar 組件，根據使用者的登入狀態顯示「登入/註冊」或「登出」按鈕。
     *   (可選) 顯示使用者 email。
@@ -60,56 +61,62 @@
 
 ---
 
-## Phase 3: 管理員後台 - 遊戲管理
+## Phase 3: 管理員後台 - 基礎建設
 
-**目標:** 讓管理員可以新增、編輯、刪除遊戲。
+**目標:** 建立管理員後台的基礎架構，包括佈局和權限控制。
 
 1.  **建立管理員佈局 (Layout):**
-    *   建立一個 `app/admin/layout.tsx`，檢查使用者是否為管理員。如果不是，則導向到首頁或顯示權限不足的訊息。
-2.  **建立遊戲管理 API:**
-    *   在 `app/api/games/route.ts` 中，建立對應的 `GET`, `POST`, `PUT`, `DELETE` 方法。
-    *   Supabase 的 RLS 策略會自動處理權限，但 API 層級也應做檢查。
-3.  **建立遊戲管理 UI:**
-    *   在 `components/admin/` 中建立 `GameForm.tsx`，用於新增和編輯遊戲。
-    *   在 `app/admin/games/page.tsx` 中：
-        *   顯示一個包含所有遊戲的列表，並有「編輯」和「刪除」按鈕。
-        *   提供一個「新增遊戲」的按鈕，點擊後顯示 `GameForm.tsx`。
+    *   建立一個 `app/admin/layout.tsx`，檢查使用者是否為管理員 (`is_admin = true`)。如果不是，則導向到首頁或顯示權限不足的訊息。
+2.  **建立共用組件:**
+    *   在 `components/admin/` 中建立共用的 UI 組件，如側邊導覽列 (Sidebar)、頁面標題 (PageHeader) 等，供所有管理頁面使用。
 
 ---
 
-## Phase 4: 下訂單功能
+## Phase 4: 管理員後台 - 核心管理功能
+
+**目標:** 讓管理員可以管理遊戲、訂單、橫幅和付款方式。
+
+1.  **遊戲管理 (Game Management):**
+    *   **API:** 在 `app/api/games/route.ts` 中，建立對應的 `GET`, `POST`, `PUT`, `DELETE` 方法。
+    *   **UI:** 在 `app/admin/games/page.tsx` 中，建立遊戲列表、新增/編輯表單 (`GameForm.tsx`)。
+2.  **訂單管理 (Order Management):**
+    *   **API:** 在 `app/api/orders/route.ts` 中，建立管理員專用的 `GET` (所有訂單) 和 `PUT` (更新狀態) 方法。
+    *   **UI:** 在 `app/admin/orders/page.tsx` 中，建立訂單列表 (`OrderList.tsx`)，並提供篩選與狀態更新功能。
+3.  **橫幅管理 (Banner Management):**
+    *   **API:** 在 `app/api/banners/route.ts` 中，建立對應的 `GET`, `POST`, `PUT`, `DELETE` 方法。
+    *   **UI:** 在 `app/admin/banners/page.tsx` 中，建立橫幅列表與管理介面。
+4.  **付款方式管理 (Payment Method Management):**
+    *   **API:** 在 `app/api/payments/route.ts` 中，建立對應的 `GET`, `POST`, `PUT`, `DELETE` 方法。
+    *   **UI:** 在 `app/admin/payments/page.tsx` 中，建立付款方式列表與管理介面。
+
+---
+
+## Phase 5: 下訂單功能
 
 **目標:** 讓登入的使用者可以為特定遊戲建立訂單。
 
 1.  **建立訂單表單組件:**
     *   在 `components/shop/` 中建立 `OrderForm.tsx`，讓使用者填寫必要的訂單資訊 (例如：遊戲角色 ID)。
 2.  **建立特定遊戲的訂單頁面:**
-    *   在 `app/shop/[game_id]/page.tsx` 中：
-        *   獲取並顯示該遊戲的詳細資訊。
-        *   嵌入 `OrderForm.tsx`。
+    *   在 `app/shop/[game_id]/page.tsx` 中，獲取並顯示遊戲詳細資訊，並嵌入 `OrderForm.tsx`。
 3.  **建立訂單 API:**
-    *   在 `app/api/orders/route.ts` 中建立 `POST` 方法。
-    *   此 API 接收到前端傳來的資料後，將訂單寫入 Supabase 的 `orders` 表，`status` 預設為 `pending`。
+    *   在 `app/api/orders/route.ts` 中建立 `POST` 方法，將訂單寫入 `orders` 表，`status` 預設為 `pending`。
 
 ---
 
-## Phase 5: 管理員後台 - 訂單管理
+## Phase 6: 報表與分析
 
-**目標:** 讓管理員可以查看所有訂單，並手動更新訂單狀態。
+**目標:** 為管理員提供業務洞察。
 
-1.  **建立訂單管理 API:**
-    *   在 `app/api/orders/route.ts` 中擴充，加入管理員專用的 `GET` (獲取所有訂單) 和 `PUT` (更新訂單狀態) 方法。
-2.  **建立訂單列表組件:**
-    *   在 `components/admin/` 中建立 `OrderList.tsx`，以表格形式顯示所有訂單的詳細資訊。
-3.  **建立訂單管理頁面:**
-    *   在 `app/admin/orders/page.tsx` 中：
-        *   使用 `OrderList.tsx` 顯示所有訂單。
-        *   提供篩選器 (例如，依 `status` 篩選)。
-        *   在每一筆 `pending` 的訂單旁，提供一個「確認收款 (Mark as Paid)」按鈕。點擊後呼叫 API 將 `status` 更新為 `paid`。
+1.  **建立報表 API:**
+    *   在 `app/api/reports/top-customers/route.ts` 中建立 `GET` 端點，根據篩選條件查詢並回傳高價值客戶數據。
+2.  **建立報表 UI:**
+    *   在 `app/admin/reports/page.tsx` 中，建立互動式篩選器 (日期、遊戲)。
+    *   使用圖表庫 (如 Recharts) 將後端數據視覺化，並在下方顯示詳細的資料表格。
 
 ---
 
-## Phase 6: 實現儲值觸發 (Hook)
+## Phase 7: 實現儲值觸發 (Hook)
 
 **目標:** 在訂單狀態被更新為 `paid` 後，觸發後續的儲值腳本。
 
@@ -122,5 +129,3 @@
         *   可能會使用 Node.js 的 `child_process` 模組 (`spawn` 或 `execFile`)。
         *   將訂單相關的必要資訊 (如角色 ID) 作為參數傳遞給 Python 腳本。
         *   **注意:** 這一步的安全性至關重要，需要謹慎處理命令注入等風險。
-
-完成以上六個階段，即可完成專案的核心功能。
