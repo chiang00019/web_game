@@ -41,7 +41,6 @@ export function useAuth() {
             .eq('user_id', user.id)
             .single()
 
-            console.warn('profile', profile)
 
           if (profileError) {
             console.warn('Profile fetch error:', profileError)

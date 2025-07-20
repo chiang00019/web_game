@@ -3,34 +3,25 @@
 import { useState, useEffect } from 'react'
 
 interface PaymentMethod {
-  id?: string
-  name: string
-  description?: string
-  is_active: boolean
-  instruction?: string
+  payment_method_id?: number
+  method: string
 }
 
 interface PaymentFormProps {
   paymentMethod?: PaymentMethod
-  onSave: (paymentMethod: Omit<PaymentMethod, 'id'>) => void
+  onSave: (paymentMethod: Omit<PaymentMethod, 'payment_method_id'>) => void
   onCancel: () => void
 }
 
 export default function PaymentForm({ paymentMethod, onSave, onCancel }: PaymentFormProps) {
-  const [formData, setFormData] = useState<Omit<PaymentMethod, 'id'>>({
-    name: '',
-    description: '',
-    is_active: true,
-    instruction: ''
+  const [formData, setFormData] = useState<Omit<PaymentMethod, 'payment_method_id'>>({
+    method: ''
   })
 
   useEffect(() => {
     if (paymentMethod) {
       setFormData({
-        name: paymentMethod.name,
-        description: paymentMethod.description || '',
-        is_active: paymentMethod.is_active,
-        instruction: paymentMethod.instruction || ''
+        method: paymentMethod.method
       })
     }
   }, [paymentMethod])
@@ -40,11 +31,11 @@ export default function PaymentForm({ paymentMethod, onSave, onCancel }: Payment
     onSave(formData)
   }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value, type } = e.target
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
+      [name]: value
     }))
   }
 
@@ -58,63 +49,19 @@ export default function PaymentForm({ paymentMethod, onSave, onCancel }: Payment
           
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="method" className="block text-sm font-medium text-gray-700">
                 付款方式名稱
               </label>
               <input
                 type="text"
-                id="name"
-                name="name"
-                value={formData.name}
+                id="method"
+                name="method"
+                value={formData.method}
                 onChange={handleChange}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 required
-                placeholder="例如：銀行轉帳、超商代碼"
+                placeholder="例如：銀行轉帳、超商代碼、線上支付"
               />
-            </div>
-
-            <div>
-              <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-                描述 (選填)
-              </label>
-              <textarea
-                id="description"
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-                rows={3}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                placeholder="付款方式的詳細說明"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="instruction" className="block text-sm font-medium text-gray-700">
-                付款說明 (選填)
-              </label>
-              <textarea
-                id="instruction"
-                name="instruction"
-                value={formData.instruction}
-                onChange={handleChange}
-                rows={4}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                placeholder="詳細的付款步驟說明，例如轉帳帳戶資訊等"
-              />
-            </div>
-
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="is_active"
-                name="is_active"
-                checked={formData.is_active}
-                onChange={handleChange}
-                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-              />
-              <label htmlFor="is_active" className="ml-2 block text-sm text-gray-900">
-                啟用此付款方式
-              </label>
             </div>
 
             <div className="flex space-x-4 pt-4">

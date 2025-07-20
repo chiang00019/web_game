@@ -28,26 +28,26 @@ export default function AdminGuard({ children, fallback }: AdminGuardProps) {
   console.log('profile', profile)
 
   useEffect(() => {
-    console.log('🔄 AdminGuard useEffect 觸發:', { loading, isAuthenticated, isAdmin })
+    console.log('AdminGuard useEffect 觸發:', { loading, isAuthenticated, isAdmin })
     
     if (!loading) {
-      console.log('✅ 載入完成，開始權限檢查')
+      console.log('載入完成，開始權限檢查')
       
       if (!isAuthenticated) {
-        console.log('❌ 未認證，重定向到登入頁面')
+        console.log('未認證，重定向到登入頁面')
         router.push('/auth')
         return
       }
 
       if (!isAdmin) {
-        console.log('❌ 非管理員，重定向到首頁')
+        console.log('非管理員，重定向到首頁')
         router.push('/')
         return
       }
 
-      console.log('✅ 管理員權限驗證通過')
+      console.log('管理員權限驗證通過')
     } else {
-      console.log('⏳ 仍在載入中...')
+      console.log('仍在載入中...')
     }
   }, [loading, isAuthenticated, isAdmin, router])
 
@@ -82,6 +82,6 @@ export default function AdminGuard({ children, fallback }: AdminGuardProps) {
   }
 
   // 如果一切正常，渲染子組件
-  console.log('✅ 渲染管理員頁面')
+  console.log('渲染管理員頁面')
   return <>{children}</>
 } 

@@ -42,19 +42,19 @@ export default function AuthForm() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
-      <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md">
-        <h1 className="text-2xl font-bold text-center">
-          {isLogin ? "Login" : "Sign Up"}
+    <div className="flex flex-col items-center justify-center min-h-screen py-12">
+      <div className="w-full max-w-md p-8 space-y-6 bg-[#2a2d4e] rounded-lg shadow-lg">
+        <h1 className="text-2xl font-bold text-center text-white">
+          {isLogin ? "登入" : "註冊"}
         </h1>
         <form onSubmit={handleAuthAction} className="space-y-6">
           {!isLogin && (
             <div>
               <label
                 htmlFor="username"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-medium text-gray-300"
               >
-                Username
+                使用者名稱
               </label>
               <input
                 id="username"
@@ -63,16 +63,16 @@ export default function AuthForm() {
                 required
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 mt-1 bg-[#1a1b2e] border border-gray-600 rounded-md shadow-sm text-white focus:outline-none focus:ring-purple-500 focus:border-purple-500"
               />
             </div>
           )}
           <div>
             <label
               htmlFor="email"
-              className="block text-sm font-medium text-gray-700"
+              className="block text-sm font-medium text-gray-300"
             >
-              Email address
+              電子郵件
             </label>
             <input
               id="email"
@@ -82,15 +82,15 @@ export default function AuthForm() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full px-3 py-2 mt-1 bg-[#1a1b2e] border border-gray-600 rounded-md shadow-sm text-white focus:outline-none focus:ring-purple-500 focus:border-purple-500"
             />
           </div>
           <div>
             <label
               htmlFor="password"
-              className="block text-sm font-medium text-gray-700"
+              className="block text-sm font-medium text-gray-300"
             >
-              Password
+              密碼
             </label>
             <input
               id="password"
@@ -100,24 +100,24 @@ export default function AuthForm() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full px-3 py-2 mt-1 bg-[#1a1b2e] border border-gray-600 rounded-md shadow-sm text-white focus:outline-none focus:ring-purple-500 focus:border-purple-500"
             />
           </div>
           <div>
             <button
               type="submit"
-              className="w-full px-4 py-2 font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              className="w-full px-4 py-2 font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors"
             >
-              {isLogin ? "Login" : "Sign Up"}
+              {isLogin ? "登入" : "註冊"}
             </button>
           </div>
         </form>
         <div className="text-sm text-center">
           <button
             onClick={() => setIsLogin(!isLogin)}
-            className="font-medium text-indigo-600 hover:text-indigo-500"
+            className="font-medium text-purple-400 hover:text-purple-300 transition-colors"
           >
-            {isLogin ? "Need an account? Sign up" : "Have an account? Login"}
+            {isLogin ? "需要帳號？立即註冊" : "已有帳號？立即登入"}
           </button>
         </div>
       </div>

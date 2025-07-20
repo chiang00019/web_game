@@ -19,7 +19,7 @@ export default function LogoutButton() {
       disabled={loading}
       className="text-white hover:text-gray-300 disabled:opacity-50"
     >
-      {loading ? '登出中...' : 'Logout'}
+      {loading ? '登出中...' : '登出'}
     </button>
   )
 }

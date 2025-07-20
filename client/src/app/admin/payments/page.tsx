@@ -5,12 +5,8 @@ import AdminGuard from '@/components/admin/AdminGuard'
 import PaymentForm from '@/components/admin/PaymentForm'
 
 interface PaymentMethod {
-  id: string
-  name: string
-  description?: string
-  is_active: boolean
-  instruction?: string
-  created_at: string
+  payment_method_id: number
+  method: string
 }
 
 export default function PaymentsPage() {
@@ -36,11 +32,11 @@ export default function PaymentsPage() {
     }
   }
 
-  const handleSave = async (paymentData: Omit<PaymentMethod, 'id' | 'created_at'>) => {
+  const handleSave = async (paymentData: Omit<PaymentMethod, 'payment_method_id'>) => {
     try {
       if (selectedPayment) {
         // Update existing payment method
-        const response = await fetch(`/api/payments/${selectedPayment.id}`, {
+        const response = await fetch(`/api/payments/${selectedPayment.payment_method_id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(paymentData),
@@ -65,11 +61,11 @@ export default function PaymentsPage() {
     }
   }
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (paymentMethodId: number) => {
     if (!confirm('確定要刪除這個付款方式嗎？')) return
 
     try {
-      const response = await fetch(`/api/payments/${id}`, {
+      const response = await fetch(`/api/payments/${paymentMethodId}`, {
         method: 'DELETE',
       })
       if (!response.ok) throw new Error('Failed to delete payment method')
@@ -129,31 +125,10 @@ export default function PaymentsPage() {
                     </div>
                   ) : (
                     paymentMethods.map((payment) => (
-                      <div key={payment.id} className="border rounded-lg p-4">
+                      <div key={payment.payment_method_id} className="border rounded-lg p-4">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <div className="flex items-center space-x-2">
-                              <h3 className="text-lg font-medium text-gray-900">{payment.name}</h3>
-                              <span className={`px-2 py-1 text-xs rounded-full ${
-                                payment.is_active 
-                                  ? 'bg-green-100 text-green-800' 
-                                  : 'bg-red-100 text-red-800'
-                              }`}>
-                                {payment.is_active ? '啟用' : '停用'}
-                              </span>
-                            </div>
-                            {payment.description && (
-                              <p className="text-sm text-gray-600 mt-1">{payment.description}</p>
-                            )}
-                            {payment.instruction && (
-                              <div className="mt-2">
-                                <p className="text-sm font-medium text-gray-700">付款說明：</p>
-                                <p className="text-sm text-gray-600 whitespace-pre-wrap">{payment.instruction}</p>
-                              </div>
-                            )}
-                            <p className="text-xs text-gray-500 mt-2">
-                              建立時間: {new Date(payment.created_at).toLocaleString('zh-TW')}
-                            </p>
+                            <h3 className="text-lg font-medium text-gray-900">{payment.method}</h3>
                           </div>
                           <div className="flex space-x-2 ml-4">
                             <button
@@ -163,7 +138,7 @@ export default function PaymentsPage() {
                               編輯
                             </button>
                             <button
-                              onClick={() => handleDelete(payment.id)}
+                              onClick={() => handleDelete(payment.payment_method_id)}
                               className="text-red-600 hover:text-red-900"
                             >
                               刪除
