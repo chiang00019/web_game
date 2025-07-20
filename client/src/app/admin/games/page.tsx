@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import { PlusIcon, EditIcon, TrashIcon, SettingsIcon } from 'lucide-react'
 import GameForm from '@/components/admin/GameForm'
 
 export default function GamesPage() {
@@ -51,52 +53,162 @@ export default function GamesPage() {
   }
 
   return (
-    <div className="p-10">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Games</h1>
-        <button
-          onClick={() => {
-            setSelectedGame(null)
-            setIsFormOpen(true)
-          }}
-          className="bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700"
-        >
-          Add Game
-        </button>
-      </div>
-
-      {isFormOpen && (
-        <div className="mb-6">
-          <GameForm game={selectedGame} onSave={handleSave} />
+    <div className="min-h-screen bg-[#0f0f23] p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* 標題區域 */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-white">
+                遊戲管理
+              </h1>
+              <p className="text-gray-400 mt-2">
+                管理網站上的所有遊戲項目
+              </p>
+            </div>
+            
+            <button
+              onClick={() => {
+                setSelectedGame(null)
+                setIsFormOpen(true)
+              }}
+              className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              <PlusIcon className="w-4 h-4" />
+              <span>新增遊戲</span>
+            </button>
+          </div>
         </div>
-      )}
 
-      <div className="bg-white shadow-md rounded-lg">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-              <th scope="col" className="relative px-6 py-3">
-                <span className="sr-only">Edit</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {games.map((game) => (
-              <tr key={game.id}>
-                <td className="px-6 py-4 whitespace-nowrap">{game.name}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{game.description}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{game.price}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <button onClick={() => handleEdit(game)} className="text-indigo-600 hover:text-indigo-900">Edit</button>
-                  <button onClick={() => handleDelete(game.id)} className="text-red-600 hover:text-red-900 ml-4">Delete</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        {/* 表單區域 */}
+        {isFormOpen && (
+          <div className="mb-8 bg-[#2a2d4e] rounded-lg shadow-lg p-6">
+            <h3 className="text-xl font-semibold text-white mb-6">
+              {selectedGame ? '編輯遊戲' : '新增遊戲'}
+            </h3>
+            <GameForm game={selectedGame} onSave={handleSave} />
+            <button
+              onClick={() => {
+                setIsFormOpen(false)
+                setSelectedGame(null)
+              }}
+              className="mt-4 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+            >
+              取消
+            </button>
+          </div>
+        )}
+
+        {/* 遊戲列表 */}
+        <div className="bg-[#2a2d4e] rounded-lg shadow-lg overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-600">
+            <h2 className="text-xl font-semibold text-white">
+              遊戲列表 ({games.length})
+            </h2>
+          </div>
+          
+          {games.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-gray-400 mb-4">尚未新增任何遊戲</p>
+              <button
+                onClick={() => {
+                  setSelectedGame(null)
+                  setIsFormOpen(true)
+                }}
+                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                新增第一個遊戲
+              </button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-[#1a1b2e]">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      遊戲名稱
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      描述
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      價格
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      狀態
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      操作
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-600">
+                  {games.map((game) => (
+                    <tr key={game.id} className="hover:bg-[#1a1b2e] transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center">
+                          <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center mr-3">
+                            <span className="text-white font-bold text-sm">
+                              {game.name?.charAt(0) || 'G'}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="text-white font-medium">{game.name}</p>
+                            <p className="text-gray-400 text-sm">{game.category || '遊戲'}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="text-gray-300 max-w-xs truncate" title={game.description}>
+                          {game.description || '無描述'}
+                        </p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="text-white font-medium">
+                          {game.price ? `NT$ ${game.price}` : '未設定'}
+                        </p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          game.is_active 
+                            ? 'bg-green-500/20 text-green-400' 
+                            : 'bg-red-500/20 text-red-400'
+                        }`}>
+                          {game.is_active ? '啟用' : '停用'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end space-x-2">
+                          <Link
+                            href={`/admin/games/${game.id}/config`}
+                            className="p-2 text-gray-400 hover:text-blue-400 transition-colors"
+                            title="配置管理"
+                          >
+                            <SettingsIcon className="w-4 h-4" />
+                          </Link>
+                          <button
+                            onClick={() => handleEdit(game)}
+                            className="p-2 text-gray-400 hover:text-purple-400 transition-colors"
+                            title="編輯"
+                          >
+                            <EditIcon className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(game.id)}
+                            className="p-2 text-gray-400 hover:text-red-400 transition-colors"
+                            title="刪除"
+                          >
+                            <TrashIcon className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
