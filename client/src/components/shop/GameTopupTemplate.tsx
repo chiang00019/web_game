@@ -2,8 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/hooks/useAuth'
+import { useDraftSave } from '@/hooks/useDraftSave'
 import Link from 'next/link'
+import { ClockIcon, SaveIcon, RotateCcwIcon, XIcon } from 'lucide-react'
 import DynamicGameOptions from './DynamicGameOptions'
+import { validateForSubmission, validateFieldRealtime } from '@/utils/formValidation'
 import { 
   Game, 
   GameConfig, 
@@ -30,26 +33,69 @@ export default function GameTopupTemplate({
 }: GameTopupTemplateProps) {
   const { user, loading: authLoading } = useAuth()
   
-  // 表單狀態
-  const [formData, setFormData] = useState<GameFormData>({})
-  const [selectedPackage, setSelectedPackage] = useState<string>('')
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('')
-  const [quantity, setQuantity] = useState<number>(1)
+  // 草稿儲存
+  const draftKey = `game_${game.game_id}_order`
+  const {
+    data: draftData,
+    updateData: updateDraft,
+    hasDraft,
+    draftInfo,
+    isAutoSaving,
+    restoreDraft,
+    clearDraft
+  } = useDraftSave({
+    formData: {} as GameFormData,
+    selectedPackage: '',
+    selectedPaymentMethod: '',
+    quantity: 1
+  }, {
+    key: draftKey,
+    onRestore: (data) => {
+      console.log('恢復草稿:', data)
+    }
+  })
+  
+  // 表單狀態 - 使用草稿資料或預設值
+  const [formData, setFormData] = useState<GameFormData>(draftData.formData || {})
+  const [selectedPackage, setSelectedPackage] = useState<string>(draftData.selectedPackage || '')
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>(draftData.selectedPaymentMethod || '')
+  const [quantity, setQuantity] = useState<number>(draftData.quantity || 1)
   
   // UI 狀態
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [showDraftPrompt, setShowDraftPrompt] = useState(false)
 
-  // 初始化預設值
+  // 初始化預設值和草稿檢查
   useEffect(() => {
+    // 檢查是否有草稿且詢問用戶是否恢復
+    if (hasDraft && !showDraftPrompt) {
+      setShowDraftPrompt(true)
+    }
+    
+    // 設定預設值 (如果沒有草稿資料)
     if (packages.length > 0 && !selectedPackage) {
-      setSelectedPackage(packages[0].package_id.toString())
+      const defaultPackage = packages[0].package_id.toString()
+      setSelectedPackage(defaultPackage)
+      updateDraft({ selectedPackage: defaultPackage })
     }
     if (paymentMethods.length > 0 && !selectedPaymentMethod) {
-      setSelectedPaymentMethod(paymentMethods[0].payment_method_id.toString())
+      const defaultPayment = paymentMethods[0].payment_method_id.toString()
+      setSelectedPaymentMethod(defaultPayment)
+      updateDraft({ selectedPaymentMethod: defaultPayment })
     }
-  }, [packages, paymentMethods, selectedPackage, selectedPaymentMethod])
+  }, [packages, paymentMethods, selectedPackage, selectedPaymentMethod, hasDraft, showDraftPrompt, updateDraft])
+
+  // 同步狀態到草稿
+  useEffect(() => {
+    updateDraft({
+      formData,
+      selectedPackage,
+      selectedPaymentMethod,
+      quantity
+    })
+  }, [formData, selectedPackage, selectedPaymentMethod, quantity, updateDraft])
 
   // 處理動態欄位變更
   const handleFieldChange = (key: string, value: string | string[] | number) => {
@@ -58,71 +104,71 @@ export default function GameTopupTemplate({
       [key]: value
     }))
     
-    // 清除該欄位的錯誤
-    if (errors[key]) {
-      setErrors(prev => {
-        const newErrors = { ...prev }
-        delete newErrors[key]
-        return newErrors
-      })
+    // 即時驗證
+    validateFieldOnChange(key, value)
+  }
+
+  // 恢復草稿
+  const handleRestoreDraft = () => {
+    const restored = restoreDraft()
+    if (restored) {
+      setFormData(draftData.formData || {})
+      setSelectedPackage(draftData.selectedPackage || '')
+      setSelectedPaymentMethod(draftData.selectedPaymentMethod || '')
+      setQuantity(draftData.quantity || 1)
     }
+    setShowDraftPrompt(false)
+  }
+
+  // 忽略草稿
+  const handleIgnoreDraft = () => {
+    clearDraft()
+    setShowDraftPrompt(false)
+  }
+
+  // 手動儲存草稿
+  const handleSaveDraft = () => {
+    updateDraft({
+      formData,
+      selectedPackage,
+      selectedPaymentMethod,
+      quantity
+    })
   }
 
   // 驗證表單
   const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {}
+    // 使用增強的表單驗證
+    const result = validateForSubmission(
+      gameConfig.fields, 
+      formData,
+      {
+        // 自訂驗證規則
+        package: () => !selectedPackage ? '請選擇儲值套餐' : null,
+        payment_method: () => !selectedPaymentMethod ? '請選擇付款方式' : null,
+        quantity: () => quantity < 1 ? '數量必須大於 0' : null
+      }
+    )
 
-    // 驗證套餐選擇
-    if (!selectedPackage) {
-      newErrors.package = '請選擇儲值套餐'
+    setErrors(result.fieldErrors)
+    return result.isValid
+  }
+
+  // 即時驗證單一欄位
+  const validateFieldOnChange = (fieldKey: string, value: any) => {
+    const field = gameConfig.fields.find(f => f.field_key === fieldKey)
+    if (field) {
+      const error = validateFieldRealtime(field, value)
+      if (error) {
+        setErrors(prev => ({ ...prev, [fieldKey]: error }))
+      } else {
+        setErrors(prev => {
+          const newErrors = { ...prev }
+          delete newErrors[fieldKey]
+          return newErrors
+        })
+      }
     }
-
-    // 驗證付款方式
-    if (!selectedPaymentMethod) {
-      newErrors.payment_method = '請選擇付款方式'
-    }
-
-    // 驗證動態欄位
-    gameConfig.fields.forEach(field => {
-      const value = formData[field.field_key]
-      
-      if (field.is_required && (!value || value === '')) {
-        newErrors[field.field_key] = `${field.field_label}為必填項目`
-        return
-      }
-
-      if (!field.validation || !value) return
-
-      const validation = field.validation
-
-      // 文字長度驗證
-      if (validation.minLength && String(value).length < validation.minLength) {
-        newErrors[field.field_key] = `${field.field_label}至少需要 ${validation.minLength} 個字符`
-      }
-      
-      if (validation.maxLength && String(value).length > validation.maxLength) {
-        newErrors[field.field_key] = `${field.field_label}不能超過 ${validation.maxLength} 個字符`
-      }
-
-      // 數字範圍驗證
-      if (field.field_type === 'number') {
-        const numValue = Number(value)
-        if (validation.min && numValue < validation.min) {
-          newErrors[field.field_key] = `${field.field_label}不能小於 ${validation.min}`
-        }
-        if (validation.max && numValue > validation.max) {
-          newErrors[field.field_key] = `${field.field_label}不能大於 ${validation.max}`
-        }
-      }
-
-      // 正則表達式驗證
-      if (validation.pattern && !new RegExp(validation.pattern).test(String(value))) {
-        newErrors[field.field_key] = `${field.field_label}格式不正確`
-      }
-    })
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
   }
 
   // 提交訂單
@@ -145,11 +191,12 @@ export default function GameTopupTemplate({
       await onOrderSubmit(orderData)
       setSuccess(true)
       
-      // 清空表單
+      // 清空表單和草稿
       setFormData({})
       setSelectedPackage(packages[0]?.package_id.toString() || '')
       setSelectedPaymentMethod(paymentMethods[0]?.payment_method_id.toString() || '')
       setQuantity(1)
+      clearDraft()
       
     } catch (error) {
       console.error('訂單提交失敗:', error)
@@ -217,7 +264,78 @@ export default function GameTopupTemplate({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
+    <div className="space-y-6">
+      {/* 草稿恢復提示 */}
+      {showDraftPrompt && (
+        <div className="bg-blue-500/10 border border-blue-500 rounded-lg p-4">
+          <div className="flex items-start space-x-3">
+            <ClockIcon className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <h4 className="text-blue-300 font-medium mb-2">發現未完成的訂單草稿</h4>
+              <p className="text-blue-200 text-sm mb-3">
+                我們發現您有一個未完成的訂單草稿，儲存於{' '}
+                {draftInfo.lastSaved?.toLocaleString('zh-TW', {
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+                。是否要恢復之前填寫的資料？
+              </p>
+              <div className="flex space-x-3">
+                <button
+                  type="button"
+                  onClick={handleRestoreDraft}
+                  className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                >
+                  <RotateCcwIcon className="w-4 h-4" />
+                  <span>恢復草稿</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleIgnoreDraft}
+                  className="flex items-center space-x-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors text-sm"
+                >
+                  <XIcon className="w-4 h-4" />
+                  <span>忽略草稿</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 自動儲存狀態 */}
+      {(isAutoSaving || draftInfo.lastSaved) && (
+        <div className="flex items-center justify-between bg-[#1a1b2e] border border-gray-600 rounded-lg px-4 py-2">
+          <div className="flex items-center space-x-2 text-sm">
+            {isAutoSaving ? (
+              <>
+                <SaveIcon className="w-4 h-4 text-yellow-400 animate-pulse" />
+                <span className="text-yellow-400">正在儲存草稿...</span>
+              </>
+            ) : draftInfo.lastSaved ? (
+              <>
+                <SaveIcon className="w-4 h-4 text-green-400" />
+                <span className="text-green-400">
+                  草稿已儲存於 {draftInfo.lastSaved.toLocaleTimeString('zh-TW')}
+                </span>
+              </>
+            ) : null}
+          </div>
+          
+          <button
+            type="button"
+            onClick={handleSaveDraft}
+            className="text-gray-400 hover:text-white text-sm transition-colors"
+          >
+            手動儲存
+          </button>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-8">
       {/* 動態遊戲選項 */}
       {gameConfig.fields.length > 0 && (
         <div className="bg-[#2a2d4e] rounded-lg shadow-lg p-6">
@@ -384,6 +502,7 @@ export default function GameTopupTemplate({
           {errors.submit}
         </div>
       )}
-    </form>
+      </form>
+    </div>
   )
 } 

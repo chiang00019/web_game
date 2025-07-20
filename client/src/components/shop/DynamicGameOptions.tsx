@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { GameConfigField, GameFormData } from '@/types/gameConfig'
+import { useAccessibility } from '@/hooks/useAccessibility'
 
 interface DynamicGameOptionsProps {
   fields: GameConfigField[]
@@ -16,6 +17,7 @@ export default function DynamicGameOptions({
   onChange, 
   errors = {} 
 }: DynamicGameOptionsProps) {
+  const { getFormFieldProps, announce, ScreenReaderAnnouncer } = useAccessibility()
   
   // 按照 display_order 排序欄位
   const sortedFields = [...fields].sort((a, b) => a.display_order - b.display_order)
@@ -59,54 +61,84 @@ export default function DynamicGameOptions({
   }
 
   // 渲染文字輸入欄位
-  const renderTextInput = (field: GameConfigField) => (
-    <div key={field.id} className="space-y-2">
-      <label className="block text-sm font-medium text-gray-300">
-        {field.field_label}
-        {field.is_required && <span className="text-red-400 ml-1">*</span>}
-      </label>
-      <input
-        type="text"
-        value={values[field.field_key] as string || ''}
-        onChange={(e) => onChange(field.field_key, e.target.value)}
-        placeholder={field.placeholder}
-        className={`w-full px-3 py-2 bg-[#1a1b2e] border rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors ${
-          errors[field.field_key] 
-            ? 'border-red-500 focus:border-red-500' 
-            : 'border-gray-600 focus:border-purple-500'
-        }`}
-      />
-      {errors[field.field_key] && (
-        <p className="text-red-400 text-sm">{errors[field.field_key]}</p>
-      )}
-    </div>
-  )
+  const renderTextInput = (field: GameConfigField) => {
+    const fieldProps = getFormFieldProps({
+      label: field.field_label,
+      error: errors[field.field_key],
+      required: field.is_required,
+      invalid: !!errors[field.field_key]
+    })
+
+    return (
+      <div key={field.id} className="space-y-2">
+        <label 
+          {...fieldProps.label}
+          className="block text-sm font-medium text-gray-300"
+        >
+          {field.field_label}
+          {field.is_required && <span className="text-red-400 ml-1">*</span>}
+        </label>
+        <input
+          {...fieldProps.field}
+          type="text"
+          value={values[field.field_key] as string || ''}
+          onChange={(e) => onChange(field.field_key, e.target.value)}
+          placeholder={field.placeholder}
+          className={`w-full px-3 py-2 bg-[#1a1b2e] border rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors ${
+            errors[field.field_key] 
+              ? 'border-red-500 focus:border-red-500' 
+              : 'border-gray-600 focus:border-purple-500'
+          }`}
+        />
+        {errors[field.field_key] && (
+          <p {...fieldProps.error} className="text-red-400 text-sm">
+            {errors[field.field_key]}
+          </p>
+        )}
+      </div>
+    )
+  }
 
   // 渲染數字輸入欄位
-  const renderNumberInput = (field: GameConfigField) => (
-    <div key={field.id} className="space-y-2">
-      <label className="block text-sm font-medium text-gray-300">
-        {field.field_label}
-        {field.is_required && <span className="text-red-400 ml-1">*</span>}
-      </label>
-      <input
-        type="number"
-        value={values[field.field_key] as number || ''}
-        onChange={(e) => onChange(field.field_key, e.target.value ? Number(e.target.value) : '')}
-        placeholder={field.placeholder}
-        min={field.validation?.min}
-        max={field.validation?.max}
-        className={`w-full px-3 py-2 bg-[#1a1b2e] border rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors ${
-          errors[field.field_key] 
-            ? 'border-red-500 focus:border-red-500' 
-            : 'border-gray-600 focus:border-purple-500'
-        }`}
-      />
-      {errors[field.field_key] && (
-        <p className="text-red-400 text-sm">{errors[field.field_key]}</p>
-      )}
-    </div>
-  )
+  const renderNumberInput = (field: GameConfigField) => {
+    const fieldProps = getFormFieldProps({
+      label: field.field_label,
+      error: errors[field.field_key],
+      required: field.is_required,
+      invalid: !!errors[field.field_key]
+    })
+
+    return (
+      <div key={field.id} className="space-y-2">
+        <label 
+          {...fieldProps.label}
+          className="block text-sm font-medium text-gray-300"
+        >
+          {field.field_label}
+          {field.is_required && <span className="text-red-400 ml-1">*</span>}
+        </label>
+        <input
+          {...fieldProps.field}
+          type="number"
+          value={values[field.field_key] as number || ''}
+          onChange={(e) => onChange(field.field_key, e.target.value ? Number(e.target.value) : '')}
+          placeholder={field.placeholder}
+          min={field.validation?.min}
+          max={field.validation?.max}
+          className={`w-full px-3 py-2 bg-[#1a1b2e] border rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors ${
+            errors[field.field_key] 
+              ? 'border-red-500 focus:border-red-500' 
+              : 'border-gray-600 focus:border-purple-500'
+          }`}
+        />
+        {errors[field.field_key] && (
+          <p {...fieldProps.error} className="text-red-400 text-sm">
+            {errors[field.field_key]}
+          </p>
+        )}
+      </div>
+    )
+  }
 
   // 渲染下拉選單
   const renderSelect = (field: GameConfigField) => (
@@ -225,6 +257,7 @@ export default function DynamicGameOptions({
 
   return (
     <div className="space-y-6">
+      <ScreenReaderAnnouncer />
       {sortedFields.map(renderField)}
     </div>
   )
