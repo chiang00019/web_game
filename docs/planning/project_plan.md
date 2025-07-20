@@ -64,15 +64,15 @@ client/
 *   **描述:** 為所有遊戲提供統一的儲值頁面模板，確保一致的用戶體驗。每個遊戲只需配置特定的選項參數，系統會自動渲染相應的表單欄位。
 *   **特色功能:**
     *   動態表單欄位生成 (文字輸入、下拉選單、單選按鈕等)
-    *   遊戲特定的主題色彩和視覺風格
     *   智能表單驗證和草稿儲存功能
     *   管理員可視化配置介面
+    *   即時預覽配置效果
 *   **主要檔案:**
     *   `components/shop/GameTopupTemplate.tsx`: 通用儲值頁面模板。
     *   `components/shop/DynamicGameOptions.tsx`: 動態選項渲染組件。
     *   `app/api/games/[id]/config/route.ts`: 遊戲配置 API。
     *   `app/admin/games/[id]/config/page.tsx`: 遊戲配置管理頁面。
-    *   `utils/gameThemes.ts`: 遊戲主題系統。
+    *   `components/admin/GameConfigForm.tsx`: 配置表單組件。
 
 ### 3. 管理員後台 (Admin Panel)
 
@@ -124,7 +124,7 @@ client/
     *   `hooks/`: 封裝資料獲取和狀態管理邏輯。
     *   `lib/`: 封裝 Supabase 的資料庫操作。
     *   `types/database.ts`: 全域 TypeScript 類型定義。
-    *   `utils/gameThemes.ts`: 遊戲主題和模板系統工具函式。
+    *   `utils/formValidation.ts`: 動態表單驗證工具函式。
 
 ---
 ---
@@ -398,37 +398,33 @@ client/
 
 1.  **遊戲配置表 (Game Configuration):**
     *   建立 `game_config` 表來儲存每個遊戲的特定配置選項。
-    *   欄位包含：`game_id (fk)`, `config_type (enum)`, `config_key`, `config_value`, `display_order`, `is_required`
-    *   例如：伺服器選項、角色等級、遊戲區域等特定選項。
-
-2.  **遊戲樣式配置:**
-    *   在 `game` 表中加入 `template_theme` 欄位，支援不同的視覺主題 (如：fantasy, modern, cyberpunk)。
-    *   加入 `primary_color`, `secondary_color` 欄位來自訂遊戲頁面的主色調。
+    *   欄位包含：`id (pk)`, `game_id (fk)`, `field_type`, `field_key`, `field_label`, `field_options`, `display_order`, `is_required`, `created_at`
+    *   支援的 field_type：`text`, `select`, `radio`, `checkbox`, `number`
+    *   例如：伺服器選項、角色 ID、遊戲區域等特定選項。
 
 ### 6.2. 通用儲值頁面模板
 
-1.  **建立模板組件:**
+1.  **重構現有的遊戲頁面:**
+    *   將 `app/shop/[game_id]/page.tsx` 改為使用新的模板系統。
+    *   保留現有的遊戲詳細資訊展示，但將訂單表單部分模板化。
+
+2.  **建立模板組件:**
     *   在 `components/shop/` 中建立 `GameTopupTemplate.tsx`，作為所有遊戲儲值頁面的通用模板。
     *   模板包含以下區塊：
-        *   遊戲 Logo 和名稱區塊
-        *   遊戲描述和注意事項區塊
+        *   遊戲基本資訊區塊 (名稱、描述、圖片)
         *   動態配置選項區塊 (根據 `game_config` 渲染)
-        *   套餐選擇區塊
-        *   付款方式選擇區塊
+        *   套餐選擇區塊 (沿用現有的套餐系統)
+        *   付款方式選擇區塊 (沿用現有的付款系統)
         *   訂單摘要區塊
         *   提交按鈕區塊
 
-2.  **動態選項渲染器:**
+3.  **動態選項渲染器:**
     *   建立 `components/shop/DynamicGameOptions.tsx` 組件，根據遊戲配置動態渲染不同類型的輸入欄位：
-        *   文字輸入 (角色名稱、角色 ID)
-        *   下拉選單 (伺服器、區域)
-        *   單選按鈕 (角色職業、陣營)
-        *   複選框 (額外服務選項)
-        *   數字輸入 (角色等級)
-
-3.  **主題系統:**
-    *   建立 `utils/gameThemes.ts`，定義不同遊戲主題的樣式配置。
-    *   支援動態載入遊戲特定的 CSS 變數和 Tailwind 類別。
+        *   `text`: 文字輸入 (角色名稱、角色 ID)
+        *   `select`: 下拉選單 (伺服器、區域)
+        *   `radio`: 單選按鈕 (角色職業、陣營)
+        *   `checkbox`: 複選框 (額外服務選項)
+        *   `number`: 數字輸入 (角色等級)
 
 ### 6.3. API 端點擴展
 
@@ -439,22 +435,20 @@ client/
         *   `PUT` (管理員): 更新遊戲配置選項
         *   `DELETE` (管理員): 刪除遊戲配置選項
 
-2.  **模板預覽 API:**
-    *   在 `app/api/games/[id]/template-preview/route.ts` 中建立端點，回傳該遊戲的完整模板配置。
+2.  **更新訂單 API:**
+    *   修改 `app/api/orders/route.ts` 的 `POST` 方法，支援動態欄位的儲存。
+    *   在 `order` 表中使用 `game_data` JSONB 欄位儲存動態表單資料。
 
 ### 6.4. 管理員後台擴展
 
 1.  **遊戲配置管理介面:**
     *   在 `app/admin/games/[id]/config/page.tsx` 中建立遊戲特定的配置管理頁面。
-    *   提供直觀的表單介面來新增、編輯、刪除各種配置選項。
+    *   提供簡潔的表單介面來新增、編輯、刪除各種配置選項。
     *   支援拖拉排序來調整選項顯示順序。
 
-2.  **模板預覽功能:**
-    *   在配置管理頁面中加入「預覽模板」功能，讓管理員可以即時預覽設定的效果。
-    *   建立 `components/admin/TemplatePreview.tsx` 組件。
-
-3.  **批量匯入/匯出:**
-    *   提供 JSON 格式的配置匯入/匯出功能，方便快速複製相似遊戲的配置。
+2.  **配置表單組件:**
+    *   建立 `components/admin/GameConfigForm.tsx` 組件，用於編輯單一配置選項。
+    *   建立 `components/admin/ConfigFieldPreview.tsx` 組件，即時預覽設定效果。
 
 ### 6.5. 用戶體驗優化
 
@@ -466,25 +460,22 @@ client/
     *   在使用者填寫表單過程中自動儲存草稿到 localStorage。
     *   頁面重新載入時自動恢復填寫進度。
 
-3.  **多語言支援準備:**
-    *   在 `game_config` 表中預留 `locale` 欄位，為未來多語言支援做準備。
-
 ### 6.6. 實作步驟
 
-1.  **第一階段 - 基礎架構:**
-    *   建立資料庫表結構
+1.  **第一階段 - 基礎架構 (不包含資料庫):**
     *   建立基本的模板組件架構
     *   實現動態選項渲染器
+    *   將現有遊戲頁面改為使用模板系統
 
 2.  **第二階段 - 管理介面:**
     *   建立遊戲配置管理頁面
-    *   實現配置 CRUD 操作
-    *   加入模板預覽功能
+    *   實現配置 CRUD 操作 (先用 mock 資料)
+    *   加入即時預覽功能
 
-3.  **第三階段 - 優化與測試:**
-    *   實現主題系統
-    *   加入用戶體驗優化功能
+3.  **第三階段 - 用戶體驗優化:**
+    *   加入表單驗證和草稿儲存功能
     *   進行跨瀏覽器相容性測試
+    *   優化響應式設計
 
 ---
 
