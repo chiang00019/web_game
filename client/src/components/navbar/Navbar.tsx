@@ -3,12 +3,41 @@
 import AuthButton from '@/components/auth/AuthButton'
 import { SearchIcon, MailIcon, ChevronDownIcon } from 'lucide-react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 export default function Navbar() {
+  const pathname = usePathname()
+  const isShopPage = pathname.startsWith('/shop/')
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+    console.log('Navbar mounted')
+  }, [])
+
+  if (!mounted) {
+    return null
+  }
+
   return (
     <>
       <header className="bg-[#4a3d8a] py-3 px-6 flex justify-between items-center">
-        <div className="flex items-center space-x-8">
+        {isShopPage ? (
+          <div className="flex items-center space-x-8">
+            <a href="/" className="text-2xl font-bold hover:text-gray-300">
+              YH工作室
+            </a>
+            <nav className="hidden md:flex items-center space-x-6">
+              <a href="/" className="text-white hover:text-gray-300">主站</a>
+              <a href="/shop" className="flex items-center text-white hover:text-gray-300">
+                遊戲 <ChevronDownIcon className="w-4 h-4 ml-1" />
+              </a>
+              <a href="/admin" className="text-white hover:text-gray-300">管理</a>
+            </nav>
+          </div>
+        ) : (
+          <div className="flex items-center space-x-8">
           <Link href="/" className="text-2xl font-bold hover:text-gray-300">
             YH工作室
           </Link>
@@ -20,6 +49,7 @@ export default function Navbar() {
             <Link href="/admin" className="text-white hover:text-gray-300">管理</Link>
           </nav>
         </div>
+        )}
         <div className="flex items-center space-x-4">
           <div className="relative hidden sm:block">
             <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -35,16 +65,17 @@ export default function Navbar() {
           <button className="text-white hover:text-gray-300">
             <MailIcon className="w-6 h-6" />
           </button>
-          <div className="flex items-center gap-4">
-            <AuthButton />
-          </div>
+          {mounted && (
+            <div className="flex items-center gap-4">
+              <AuthButton />
+            </div>
+          )}
         </div>
       </header>
 
       <div className="bg-[#2a2d4e] py-2 px-6 text-center text-sm">
         <p>
-          <span className="bg-purple-600 p-1 rounded-md mr-2">$</span>
-          立即註冊即享85折新人禮! 
+          <span className="bg-purple-600 p-1 rounded-md mr-2">$</span> 
           <Link href="/auth" className="underline ml-1 hover:text-gray-300">
             前往註冊 {'>'}
           </Link>

@@ -1,4 +1,4 @@
-import { createClient } from "@/utils/supabase/server";
+import { createSupabaseServer } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 
 export default async function AdminLayout({
@@ -6,7 +6,7 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
+  const supabase = await createSupabaseServer();
   const { data: { user }, error } = await supabase.auth.getUser();
 
   // 如果沒有用戶或認證錯誤，重定向到登入頁面

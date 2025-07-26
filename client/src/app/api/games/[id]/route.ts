@@ -1,9 +1,14 @@
-import { createClient } from '@/utils/supabase/server'
+import { createSupabaseServer } from '@/utils/supabase/server'
+import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
-  const supabase = await createClient()
-  const { data: game, error } = await supabase.from('game').select('*').eq('id', params.id).single()
+  const supabase = await createSupabaseServer()
+  const { data: game, error } = await supabase
+    .from('games')
+    .select('*')
+    .eq('id', params.id)
+    .single()
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
@@ -13,10 +18,13 @@ export async function GET(request: Request, { params }: { params: { id: string }
 }
 
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
-  const supabase = await createClient()
-  const game = await request.json()
-
-  const { data, error } = await supabase.from('game').update(game).eq('id', params.id).select().single()
+  const supabase = await createSupabaseServer()
+  const { name, icon_url } = await request.json()
+  const { data, error } = await supabase
+    .from('games')
+    .update({ name, icon_url })
+    .eq('id', params.id)
+    .select()
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
@@ -26,13 +34,12 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 }
 
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
-  const supabase = await createClient()
-
-  const { error } = await supabase.from('game').delete().eq('id', params.id)
+  const supabase = await createSupabaseServer()
+  const { error } = await supabase.from('games').delete().eq('id', params.id)
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  return NextResponse.json({ success: true })
+  return new Response(null, { status: 204 })
 }

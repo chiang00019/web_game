@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss/index.css";
 
 :root {
   --foreground-rgb: 255, 255, 255;
@@ -79,16 +77,15 @@ body {
   background: var(--primary-bg) !important;
   color: var(--primary-text) !important;
 }
-
-.high-contrast .bg-\[#0f0f23\] {
+.high-contrast [class*="bg-[#0f0f23]"]{
   background-color: var(--primary-bg) !important;
 }
 
-.high-contrast .bg-\[#2a2d4e\] {
+.high-contrast [class*="bg-[#2a2d4e]"]{
   background-color: var(--secondary-bg) !important;
 }
 
-.high-contrast .bg-\[#1a1b2e\] {
+.high-contrast [class*="bg-[#1a1b2e]"]{
   background-color: var(--tertiary-bg) !important;
 }
 
@@ -271,9 +268,9 @@ textarea:focus {
     color: black !important;
   }
   
-  .bg-\[#0f0f23\],
-  .bg-\[#2a2d4e\],
-  .bg-\[#1a1b2e\] {
+  [class*="bg-[#0f0f23]"],
+  [class*="bg-[#2a2d4e]"],
+  [class*="bg-[#1a1b2e]"] {
     background: white !important;
     color: black !important;
   }

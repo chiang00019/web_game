@@ -251,14 +251,14 @@ export default function GameTopupTemplate({
           onClick={() => setSuccess(false)}
           className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors mr-4"
         >
-          繼續儲值
+          繼續儲值  
         </button>
-        <Link
+        <a
           href="/shop"
           className="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition-colors"
         >
           返回商店
-        </Link>
+        </a>
       </div>
     )
   }

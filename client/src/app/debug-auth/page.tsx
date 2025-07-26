@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import supabase from "@/utils/supabase/client";
+import { createSupabaseClient } from "@/lib/supabase/client";
 import { User } from '@supabase/supabase-js'
 
 interface Profile {
@@ -11,6 +11,8 @@ interface Profile {
   line_username: string | null
   phone_no: string | null
 }
+
+const supabase = createSupabaseClient()
 
 export default function DebugAuthPage() {
   const [user, setUser] = useState<User | null>(null)

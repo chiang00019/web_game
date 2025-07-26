@@ -1,8 +1,8 @@
-import { createClient } from '@/utils/supabase/server'
+import { createSupabaseServer } from '@/utils/supabase/server'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
-  const supabase = await createClient()
+  const supabase = await createSupabaseServer()
   const { data: paymentMethods, error } = await supabase
     .from('payment_method')
     .select('*')
@@ -16,7 +16,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const supabase = await createClient()
+  const supabase = await createSupabaseServer()
   const paymentMethod = await request.json()
 
   const { data, error } = await supabase

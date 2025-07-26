@@ -1,11 +1,11 @@
-import { createClient } from '@/utils/supabase/server'
+import { createSupabaseServer } from '@/utils/supabase/server'
 import { NextResponse } from 'next/server'
 
 export async function PUT(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const supabase = await createClient()
+  const supabase = await createSupabaseServer()
   const { status } = await request.json()
 
   // Update order status
@@ -33,7 +33,7 @@ export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const supabase = await createClient()
+  const supabase = await createSupabaseServer()
   
   const { data: order, error } = await supabase
     .from('order')

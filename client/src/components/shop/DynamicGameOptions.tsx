@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { GameConfigField, GameFormData } from '@/types/gameConfig'
 import { useAccessibility } from '@/hooks/useAccessibility'
+import { ScreenReaderAnnouncer } from '@/components/common/ScreenReaderAnnouncer'
 
 interface DynamicGameOptionsProps {
   fields: GameConfigField[]
@@ -17,7 +18,9 @@ export default function DynamicGameOptions({
   onChange, 
   errors = {} 
 }: DynamicGameOptionsProps) {
-  const { getFormFieldProps, announce, ScreenReaderAnnouncer } = useAccessibility()
+  const { getFormFieldProps, announce, announceMessage } = useAccessibility({
+    enableAnnouncements: true
+  })
   
   // 按照 display_order 排序欄位
   const sortedFields = [...fields].sort((a, b) => a.display_order - b.display_order)
@@ -257,7 +260,7 @@ export default function DynamicGameOptions({
 
   return (
     <div className="space-y-6">
-      <ScreenReaderAnnouncer />
+      <ScreenReaderAnnouncer message={announceMessage} />
       {sortedFields.map(renderField)}
     </div>
   )

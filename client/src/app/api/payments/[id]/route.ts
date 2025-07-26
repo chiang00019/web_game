@@ -1,11 +1,11 @@
-import { createClient } from '@/utils/supabase/server'
+import { createSupabaseServer } from '@/utils/supabase/server'
 import { NextResponse } from 'next/server'
 
 export async function PUT(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const supabase = await createClient()
+  const supabase = await createSupabaseServer()
   const paymentMethod = await request.json()
 
   const { data, error } = await supabase
@@ -26,7 +26,7 @@ export async function DELETE(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const supabase = await createClient()
+  const supabase = await createSupabaseServer()
 
   const { error } = await supabase
     .from('payment_method')
@@ -44,7 +44,7 @@ export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const supabase = await createClient()
+  const supabase = await createSupabaseServer()
   
   const { data: paymentMethod, error } = await supabase
     .from('payment_method')

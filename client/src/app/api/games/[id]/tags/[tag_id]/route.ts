@@ -1,22 +1,21 @@
 import { createSupabaseServer } from '@/utils/supabase/server'
+import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
-export async function GET(
+export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string; tag_id: string } }
 ) {
   const supabase = await createSupabaseServer()
-  
-  const { data: packages, error } = await supabase
-    .from('game_packages')
-    .select('*')
+  const { error } = await supabase
+    .from('game_tags')
+    .delete()
     .eq('game_id', params.id)
-    .eq('is_active', true)
-    .order('price', { ascending: true })
+    .eq('tag_id', params.tag_id)
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  return NextResponse.json(packages)
-} 
+  return new Response(null, { status: 204 })
+}

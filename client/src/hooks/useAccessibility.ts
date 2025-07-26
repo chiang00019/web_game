@@ -199,18 +199,6 @@ export function useAccessibility(options: AccessibilityOptions = {}) {
     }
   }, [generateId])
 
-  // 建立螢幕閱讀器專用的公告元素
-  const ScreenReaderAnnouncer = () => (
-    <div
-      aria-live="polite"
-      aria-atomic="true"
-      className="sr-only"
-      role="status"
-    >
-      {announceMessage}
-    </div>
-  )
-
   return {
     trapFocus,
     releaseFocus,
@@ -218,29 +206,11 @@ export function useAccessibility(options: AccessibilityOptions = {}) {
     getAriaProps,
     generateId,
     getFormFieldProps,
-    ScreenReaderAnnouncer
+    announceMessage
   }
 }
 
-// 跳轉到主要內容的連結
-export function SkipToContentLink({ targetId = 'main-content' }: { targetId?: string }) {
-  return (
-    <a
-      href={`#${targetId}`}
-      className="sr-only focus:not-sr-only focus:absolute focus:top-0 focus:left-0 focus:bg-blue-600 focus:text-white focus:p-2 focus:z-50 focus:rounded-br-md"
-      onFocus={(e) => {
-        // 確保連結在聚焦時可見
-        e.target.classList.remove('sr-only')
-      }}
-      onBlur={(e) => {
-        // 失去焦點時隱藏
-        e.target.classList.add('sr-only')
-      }}
-    >
-      跳至主要內容
-    </a>
-  )
-}
+
 
 // 高對比度切換
 export function useHighContrast() {

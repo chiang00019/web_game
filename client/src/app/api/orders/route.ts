@@ -1,8 +1,8 @@
-import { createClient } from '@/utils/supabase/server'
+import { createSupabaseServer } from '@/utils/supabase/server'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
-  const supabase = await createClient()
+  const supabase = await createSupabaseServer()
   
   // Get orders with related data (user profile, game info, game packages)
   const { data: orders, error } = await supabase
@@ -26,7 +26,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const supabase = await createClient()
+  const supabase = await createSupabaseServer()
   
   // 檢查用戶認證
   const { data: { user }, error: authError } = await supabase.auth.getUser()

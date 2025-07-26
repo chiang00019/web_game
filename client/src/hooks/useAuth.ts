@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import supabase from '@/utils/supabase/client'
+import { createSupabaseClient } from '@/utils/supabase/client'
 import { User } from '@supabase/supabase-js'
 
 interface Profile {
@@ -12,6 +12,8 @@ interface Profile {
   phone_no: string | null
 }
 
+const supabase = createSupabaseClient()
+
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -19,21 +21,16 @@ export function useAuth() {
   const [error, setError] = useState<string | null>(null)
   
   useEffect(() => {
-    // 獲取當前用戶和 profile
-    const fetchUser = async () => {
+    let mounted = true
+
+      // 獲取當前用戶和 profile
+    const fetchProfile = async (user: User | null) => {
       try {
+        if (!mounted) return
         setLoading(true)
         setError(null)
-
-        // 獲取用戶
-        const { data: { user }, error: userError } = await supabase.auth.getUser()
         
-        if (userError) {
-          throw userError
-        }
-
-        setUser(user)
-        
+        // 只在有 user 時獲取 profile
         if (user) {
           const { data: profile, error: profileError } = await supabase
             .from('profiles')
@@ -41,14 +38,15 @@ export function useAuth() {
             .eq('user_id', user.id)
             .single()
 
-
-          if (profileError) {
+          if (!mounted) return
+          if (!profileError && profile) {
+            setProfile(profile)
+          } else {
             console.warn('Profile fetch error:', profileError)
             // 不拋出錯誤，因為 profile 可能不存在（新用戶）
-          } else {
-            setProfile(profile)
           }
         } else {
+          console.error('no user')
           setProfile(null)
         }
       } catch (err) {
@@ -57,41 +55,24 @@ export function useAuth() {
         setUser(null)
         setProfile(null)
       } finally {
+        if (!mounted) return
         setLoading(false)
       }
     }
 
-    fetchUser()
-
-    // 監聽認證狀態變化
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.email)
-        
-        if (session?.user) {
-          setUser(session.user)
-          
-          // 重新獲取 profile
-          const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('user_id', session.user.id)
-            .single()
-
-          if (!profileError && profile) {
-            setProfile(profile)
-          }
-        } else {
-          setUser(null)
-          setProfile(null)
-        }
-        
-        setLoading(false)
+    const fetchSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        fetchProfile(session.user)
       }
-    )
+    }
 
-    return () => subscription.unsubscribe()
-  }, [supabase])
+    fetchSession()
+
+    return () => {
+      mounted = false
+    }
+  }, [])
 
   const signOut = async () => {
     try {

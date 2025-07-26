@@ -12,10 +12,13 @@ DROP TRIGGER IF EXISTS on_order_updated ON public."order";
 -- 3. Drop policies that depend on functions.
 DROP POLICY IF EXISTS "Admins can access all profiles" ON public.profiles;
 DROP POLICY IF EXISTS "Admins can access all orders" ON public."order";
-DROP POLICY IF EXISTS "Admins can manage games" ON public.game;
-DROP POLICY IF EXISTS "Admins can manage game packages" ON public.game_packages;
+DROP POLICY IF EXISTS "Admins can manage games" ON public.games;
+DROP POLICY IF EXISTS "Admins can manage game packages" ON public.game_options;
 DROP POLICY IF EXISTS "Admins can manage payment methods" ON public.payment_method;
 DROP POLICY IF EXISTS "Admins can manage banners" ON public.banner;
+DROP POLICY IF EXISTS "Admins can manage tags" ON public.tags;
+DROP POLICY IF EXISTS "Admins can manage game_tags" ON public.game_tags;
+
 
 -- 4. Drop the rest of the functions.
 DROP FUNCTION IF EXISTS public.handle_new_user();
@@ -27,8 +30,10 @@ DROP TABLE IF EXISTS public."order" CASCADE;
 DROP TABLE IF EXISTS public.allow_payment_method CASCADE;
 DROP TABLE IF EXISTS public.use CASCADE;
 DROP TABLE IF EXISTS public.profiles CASCADE;
-DROP TABLE IF EXISTS public.game_packages CASCADE;
-DROP TABLE IF EXISTS public.game CASCADE;
+DROP TABLE IF EXISTS public.game_options CASCADE;
+DROP TABLE IF EXISTS public.game_tags CASCADE;
+DROP TABLE IF EXISTS public.games CASCADE;
+DROP TABLE IF EXISTS public.tags CASCADE;
 DROP TABLE IF EXISTS public.payment_method CASCADE;
 DROP TABLE IF EXISTS public.add_value_process CASCADE;
 DROP TABLE IF EXISTS public.banner CASCADE;
@@ -48,12 +53,34 @@ CREATE TYPE public.order_status AS ENUM (
 
 
 -- ========= CREATE TABLES =========
-CREATE TABLE public.game (
-  game_id SERIAL PRIMARY KEY,
-  game_name text NOT NULL,
-  category text,
-  icon text,
-  is_active boolean DEFAULT true
+CREATE TABLE public.games (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  icon_url VARCHAR(255),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE public.game_options (
+    id SERIAL PRIMARY KEY,
+    game_id INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    icon_url VARCHAR(255),
+    price NUMERIC(10, 2) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE public.tags (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE public.game_tags (
+    game_id INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+    tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+    PRIMARY KEY (game_id, tag_id)
 );
 
 CREATE TABLE public.payment_method (
@@ -76,15 +103,6 @@ CREATE TABLE public.banner (
   created_at timestamptz DEFAULT now()
 );
 
-CREATE TABLE public.game_packages (
-  package_id SERIAL PRIMARY KEY,
-  game_id integer NOT NULL REFERENCES public.game(game_id),
-  name text NOT NULL,
-  description text,
-  price numeric NOT NULL,
-  is_active boolean DEFAULT true
-);
-
 CREATE TABLE public.profiles (
   user_id uuid NOT NULL PRIMARY KEY,
   is_admin boolean DEFAULT false,
@@ -98,8 +116,8 @@ COMMENT ON TABLE public.profiles IS 'Stores user profiles and admin status.';
 CREATE TABLE public."order" (
   order_id SERIAL PRIMARY KEY,
   user_id uuid NOT NULL REFERENCES public.profiles(user_id),
-  game_id integer REFERENCES public.game(game_id),
-  package_id integer REFERENCES public.game_packages(package_id),
+  game_id integer REFERENCES public.games(id),
+  package_id integer REFERENCES public.game_options(id),
   payment_method_id integer REFERENCES public.payment_method(payment_method_id),
   status public.order_status DEFAULT 'pending',
   is_adv boolean DEFAULT false,
@@ -115,7 +133,7 @@ CREATE TABLE public.allow_payment_method (
   game_id integer NOT NULL,
   payment_method_id integer NOT NULL,
   CONSTRAINT allow_payment_method_pkey PRIMARY KEY (game_id, payment_method_id),
-  CONSTRAINT allow_payment_method_game_id_fkey FOREIGN KEY (game_id) REFERENCES public.game(game_id),
+  CONSTRAINT allow_payment_method_game_id_fkey FOREIGN KEY (game_id) REFERENCES public.games(id),
   CONSTRAINT allow_payment_method_payment_method_id_fkey FOREIGN KEY (payment_method_id) REFERENCES public.payment_method(payment_method_id)
 );
 
@@ -123,7 +141,7 @@ CREATE TABLE public.use (
   game_id integer NOT NULL,
   process_id integer NOT NULL,
   CONSTRAINT use_pkey PRIMARY KEY (game_id, process_id),
-  CONSTRAINT use_game_id_fkey FOREIGN KEY (game_id) REFERENCES public.game(game_id),
+  CONSTRAINT use_game_id_fkey FOREIGN KEY (game_id) REFERENCES public.games(id),
   CONSTRAINT use_process_id_fkey FOREIGN KEY (process_id) REFERENCES public.add_value_process(process_id)
 );
 
@@ -133,7 +151,7 @@ CREATE INDEX ON public."order" (user_id);
 CREATE INDEX ON public."order" (game_id);
 CREATE INDEX ON public."order" (status);
 CREATE INDEX ON public.profiles (user_name);
-CREATE INDEX ON public.game_packages (game_id);
+CREATE INDEX ON public.game_options (game_id);
 
 
 -- ========= FUNCTIONS & TRIGGERS =========
@@ -168,28 +186,34 @@ $$;
 -- ========= ROW LEVEL SECURITY (RLS) =========
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public."order" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.game ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.game_packages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.games ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.game_options ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.payment_method ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.banner ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tags ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.game_tags ENABLE ROW LEVEL SECURITY;
 
 -- Policies
 CREATE POLICY "Users can view their own profile" ON public.profiles FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Users can view their own orders" ON public."order" FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can create their own orders" ON public."order" FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Publicly readable tables" ON public.game FOR SELECT USING (true);
-CREATE POLICY "Publicly readable packages" ON public.game_packages FOR SELECT USING (true);
+CREATE POLICY "Publicly readable tables" ON public.games FOR SELECT USING (true);
+CREATE POLICY "Publicly readable packages" ON public.game_options FOR SELECT USING (true);
 CREATE POLICY "Publicly readable payments" ON public.payment_method FOR SELECT USING (true);
 CREATE POLICY "Publicly readable banners" ON public.banner FOR SELECT USING (true);
+CREATE POLICY "Publicly readable tags" ON public.tags FOR SELECT USING (true);
+CREATE POLICY "Publicly readable game_tags" ON public.game_tags FOR SELECT USING (true);
 
 -- Admin policies
 CREATE POLICY "Admins can access all profiles" ON public.profiles FOR ALL USING (public.is_admin());
 CREATE POLICY "Admins can access all orders" ON public."order" FOR ALL USING (public.is_admin());
-CREATE POLICY "Admins can manage games" ON public.game FOR ALL USING (public.is_admin());
-CREATE POLICY "Admins can manage game packages" ON public.game_packages FOR ALL USING (public.is_admin());
+CREATE POLICY "Admins can manage games" ON public.games FOR ALL USING (public.is_admin());
+CREATE POLICY "Admins can manage game packages" ON public.game_options FOR ALL USING (public.is_admin());
 CREATE POLICY "Admins can manage payment methods" ON public.payment_method FOR ALL USING (public.is_admin());
 CREATE POLICY "Admins can manage banners" ON public.banner FOR ALL USING (public.is_admin());
+CREATE POLICY "Admins can manage tags" ON public.tags FOR ALL USING (public.is_admin());
+CREATE POLICY "Admins can manage game_tags" ON public.game_tags FOR ALL USING (public.is_admin());
 
 
 -- ========= RPC FOR REPORTS =========
@@ -223,7 +247,7 @@ BEGIN
     JOIN
         public.profiles AS p ON o.user_id = p.user_id
     JOIN
-        public.game_packages AS pkg ON o.package_id = pkg.package_id
+        public.game_options AS pkg ON o.package_id = pkg.id
     WHERE
         o.status = 'completed'
         AND (p_game_id IS NULL OR o.game_id = p_game_id)

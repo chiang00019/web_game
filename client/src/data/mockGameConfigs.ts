@@ -178,7 +178,7 @@ export const mockGames: Record<number, Game> = {
     game_id: 1,
     game_name: '原神',
     category: 'RPG',
-    icon: 'https://via.placeholder.com/200x200/4F46E5/FFFFFF?text=原神',
+    icon: '/api/placeholder/200x200/4F46E5/FFFFFF?text=原神',
     is_active: true,
     description: '在璃月和蒙德的世界中展開冒險，與各種元素力量戰鬥，體驗開放世界的魅力。'
   },
@@ -186,7 +186,7 @@ export const mockGames: Record<number, Game> = {
     game_id: 2,
     game_name: '崩壞：星穹鐵道',
     category: 'RPG',
-    icon: 'https://via.placeholder.com/200x200/7C3AED/FFFFFF?text=星鐵',
+    icon: '/api/placeholder/200x200/7C3AED/FFFFFF?text=星鐵',
     is_active: true,
     description: '搭乘星穹列車，在銀河中展開冒險旅程，體驗回合制戰鬥的策略樂趣。'
   }
