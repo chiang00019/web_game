@@ -3,12 +3,9 @@
 import { useAuth } from '@/hooks/useAuth'
 import LoginButton from './LoginButton'
 import LogoutButton from './LogoutButton'
-import { createSupabaseClient } from '@/utils/supabase/client'
-import { useEffect } from 'react'
 
 export default function AuthButton() {
   const {profile, loading } = useAuth()
-  const supabase = createSupabaseClient()
 
   if (loading) {
     return (

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { createSupabaseClient } from '@/utils/supabase/client'
 import { User } from '@supabase/supabase-js'
 
@@ -19,73 +19,75 @@ export function useAuth() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  
-  useEffect(() => {
-    let mounted = true
 
-      // 獲取當前用戶和 profile
-    const fetchProfile = async (user: User | null) => {
-      try {
-        if (!mounted) return
-        setLoading(true)
-        setError(null)
-        
-        // 只在有 user 時獲取 profile
-        if (user) {
-          const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('user_id', user.id)
-            .single()
-
-          if (!mounted) return
-          if (!profileError && profile) {
-            setProfile(profile)
-          } else {
-            console.warn('Profile fetch error:', profileError)
-            // 不拋出錯誤，因為 profile 可能不存在（新用戶）
-          }
-        } else {
-          console.error('no user')
-          setProfile(null)
-        }
-      } catch (err) {
-        console.error('Auth error:', err)
-        setError(err instanceof Error ? err.message : '認證錯誤')
-        setUser(null)
-        setProfile(null)
-      } finally {
-        if (!mounted) return
-        setLoading(false)
-      }
+  const fetchProfile = useCallback(async (user: User | null) => {
+    setLoading(true)
+    setError(null)
+    if (!user) {
+      setProfile(null)
+      setLoading(false)
+      return
     }
 
-    const fetchSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session) {
-        fetchProfile(session.user)
+    try {
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single()
+
+      if (profileError && profileError.code !== 'PGRST116') {
+        // PGRST116 means no rows found, which is not a critical error for a new user.
+        console.warn('Profile fetch error:', profileError)
+        throw profileError
       }
-    }
-
-    fetchSession()
-
-    return () => {
-      mounted = false
+      setProfile(profileData)
+    } catch (err) {
+      console.error('Auth error:', err)
+      setError(err instanceof Error ? err.message : '獲取個人資料時發生錯誤')
+      setProfile(null) // Clear profile on error
+    } finally {
+      setLoading(false)
     }
   }, [])
 
+  useEffect(() => {
+    setLoading(true)
+    // Get initial user data to prevent flicker
+    const getInitialUser = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        setUser(user);
+        await fetchProfile(user);
+        setLoading(false);
+    }
+    getInitialUser();
+
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        const currentUser = session?.user ?? null
+        setUser(currentUser)
+        if (event === 'SIGNED_IN') {
+          await fetchProfile(currentUser)
+        } else if (event === 'SIGNED_OUT') {
+          setProfile(null)
+          setLoading(false)
+        }
+      }
+    )
+
+    return () => {
+      authListener?.subscription.unsubscribe()
+    }
+  }, [fetchProfile])
+
   const signOut = async () => {
     try {
-      setLoading(true)
       await supabase.auth.signOut()
-      setUser(null)
-      setProfile(null)
-      console.warn('signOut')
+      // The onAuthStateChange listener will handle clearing user and profile state.
     } catch (err) {
       console.error('Sign out error:', err)
       setError(err instanceof Error ? err.message : '登出錯誤')
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -96,6 +98,6 @@ export function useAuth() {
     error,
     isAuthenticated: !!user,
     isAdmin: !!profile?.is_admin,
-    signOut
+    signOut,
   }
 } 
