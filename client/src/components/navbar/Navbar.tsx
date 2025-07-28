@@ -13,7 +13,6 @@ export default function Navbar() {
 
   useEffect(() => {
     setMounted(true)
-    console.log('Navbar mounted')
   }, [])
 
   if (!mounted) {
@@ -25,15 +24,15 @@ export default function Navbar() {
       <header className="bg-[#4a3d8a] py-3 px-6 flex justify-between items-center">
         {isShopPage ? (
           <div className="flex items-center space-x-8">
-            <a href="/" className="text-2xl font-bold hover:text-gray-300">
+            <Link href="/" className="text-2xl font-bold hover:text-gray-300">
               YH工作室
-            </a>
+            </Link>
             <nav className="hidden md:flex items-center space-x-6">
-              <a href="/" className="text-white hover:text-gray-300">主站</a>
-              <a href="/shop" className="flex items-center text-white hover:text-gray-300">
+              <Link href="/" className="text-white hover:text-gray-300">主站</Link>
+              <Link href="/shop" className="flex items-center text-white hover:text-gray-300">
                 遊戲 <ChevronDownIcon className="w-4 h-4 ml-1" />
-              </a>
-              <a href="/admin" className="text-white hover:text-gray-300">管理</a>
+              </Link>
+              <Link href="/admin" className="text-white hover:text-gray-300">管理</Link>
             </nav>
           </div>
         ) : (

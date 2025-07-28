@@ -1,6 +1,5 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { GameConfigField, GameFormData } from '@/types/gameConfig'
 import { useAccessibility } from '@/hooks/useAccessibility'
 import { ScreenReaderAnnouncer } from '@/components/common/ScreenReaderAnnouncer'
@@ -18,7 +17,7 @@ export default function DynamicGameOptions({
   onChange, 
   errors = {} 
 }: DynamicGameOptionsProps) {
-  const { getFormFieldProps, announce, announceMessage } = useAccessibility({
+  const { getFormFieldProps, announceMessage } = useAccessibility({
     enableAnnouncements: true
   })
   
@@ -26,42 +25,42 @@ export default function DynamicGameOptions({
   const sortedFields = [...fields].sort((a, b) => a.display_order - b.display_order)
 
   // 驗證單一欄位
-  const validateField = (field: GameConfigField, value: any): string | null => {
-    if (field.is_required && (!value || value === '')) {
-      return `${field.field_label}為必填項目`
-    }
+  // const validateField = (field: GameConfigField, value: string | string[] | number): string | null => {
+  //   if (field.is_required && (!value || value === '')) {
+  //     return `${field.field_label}為必填項目`
+  //   }
 
-    if (!field.validation || !value) return null
+  //   if (!field.validation || !value) return null
 
-    const validation = field.validation
+  //   const validation = field.validation
 
-    // 文字長度驗證
-    if (validation.minLength && String(value).length < validation.minLength) {
-      return `${field.field_label}至少需要 ${validation.minLength} 個字符`
-    }
+  //   // 文字長度驗證
+  //   if (validation.minLength && String(value).length < validation.minLength) {
+  //     return `${field.field_label}至少需要 ${validation.minLength} 個字符`
+  //   }
     
-    if (validation.maxLength && String(value).length > validation.maxLength) {
-      return `${field.field_label}不能超過 ${validation.maxLength} 個字符`
-    }
+  //   if (validation.maxLength && String(value).length > validation.maxLength) {
+  //     return `${field.field_label}不能超過 ${validation.maxLength} 個字符`
+  //   }
 
-    // 數字範圍驗證
-    if (field.field_type === 'number') {
-      const numValue = Number(value)
-      if (validation.min && numValue < validation.min) {
-        return `${field.field_label}不能小於 ${validation.min}`
-      }
-      if (validation.max && numValue > validation.max) {
-        return `${field.field_label}不能大於 ${validation.max}`
-      }
-    }
+  //   // 數字範圍驗證
+  //   if (field.field_type === 'number') {
+  //     const numValue = Number(value)
+  //     if (validation.min && numValue < validation.min) {
+  //       return `${field.field_label}不能小於 ${validation.min}`
+  //     }
+  //     if (validation.max && numValue > validation.max) {
+  //       return `${field.field_label}不能大於 ${validation.max}`
+  //     }
+  //   }
 
-    // 正則表達式驗證
-    if (validation.pattern && !new RegExp(validation.pattern).test(String(value))) {
-      return `${field.field_label}格式不正確`
-    }
+  //   // 正則表達式驗證
+  //   if (validation.pattern && !new RegExp(validation.pattern).test(String(value))) {
+  //     return `${field.field_label}格式不正確`
+  //   }
 
-    return null
-  }
+  //   return null
+  // }
 
   // 渲染文字輸入欄位
   const renderTextInput = (field: GameConfigField) => {

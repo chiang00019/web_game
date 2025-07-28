@@ -1,6 +1,8 @@
 import { createSupabaseServer } from '@/utils/supabase/server'
 import { NextResponse } from 'next/server'
 
+// API route for banner operations
+
 export async function PUT(
   request: Request,
   { params }: { params: { id: string } }

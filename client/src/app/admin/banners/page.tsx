@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import AdminGuard from '@/components/admin/AdminGuard'
 import BannerForm from '@/components/admin/BannerForm'
 
@@ -131,10 +132,12 @@ export default function BannersPage() {
                   ) : (
                     banners.map((banner) => (
                       <div key={banner.id} className="border rounded-lg p-4 flex items-center space-x-4">
-                        <img
+                        <Image
                           src={banner.image_url}
                           alt={banner.title}
-                          className="w-24 h-16 object-cover rounded"
+                          width={96} // Corresponds to w-24 (96px)
+                          height={64} // Corresponds to h-16 (64px)
+                          className="object-cover rounded"
                         />
                         <div className="flex-1">
                           <h3 className="text-lg font-medium text-gray-900">{banner.title}</h3>

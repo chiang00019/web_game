@@ -155,7 +155,7 @@ export default function GameTopupTemplate({
   }
 
   // 即時驗證單一欄位
-  const validateFieldOnChange = (fieldKey: string, value: any) => {
+  const validateFieldOnChange = (fieldKey: string, value: string | string[] | number) => {
     const field = gameConfig.fields.find(f => f.field_key === fieldKey)
     if (field) {
       const error = validateFieldRealtime(field, value)
@@ -253,12 +253,12 @@ export default function GameTopupTemplate({
         >
           繼續儲值  
         </button>
-        <a
+        <Link
           href="/shop"
           className="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition-colors"
         >
           返回商店
-        </a>
+        </Link>
       </div>
     )
   }

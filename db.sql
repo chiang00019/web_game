@@ -56,7 +56,9 @@ CREATE TYPE public.order_status AS ENUM (
 CREATE TABLE public.games (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
+  description TEXT,
   icon_path VARCHAR(255),
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -165,6 +167,8 @@ END;
 $$;
 
 CREATE TRIGGER on_order_updated BEFORE UPDATE ON public."order" FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+CREATE TRIGGER on_games_updated BEFORE UPDATE ON public.games FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+CREATE TRIGGER on_game_options_updated BEFORE UPDATE ON public.game_options FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$

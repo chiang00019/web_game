@@ -16,11 +16,8 @@ export const createSupabaseServer = async () => {
           return cookieStore.getAll()
         },
         setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }: { name: string, value: string, options: CookieOptions }) => cookieStore.set(name, value, options))
-          } catch (error) {
-            console.error('Error server side cookies', error)
-          }
+          // 在伺服器端，我們只讀取 cookies，不設置它們
+          // 這避免了 "Cookies can only be modified in a Server Action or Route Handler" 錯誤
         },
       },
     },

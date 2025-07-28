@@ -18,13 +18,12 @@ export default async function AdminLayout({
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("is_admin")
-    .eq("user_id", user.id)  // 修正：使用 user_id 而不是 id
+    .eq("user_id", user.id)
     .single();
 
   // 如果查詢失敗或用戶不是管理員，重定向到首頁
   if (profileError || !profile?.is_admin) {
     redirect("/");
   }
-
   return <>{children}</>;
 }

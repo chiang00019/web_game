@@ -58,7 +58,7 @@ export default function GameConfigForm({ field, onSave, onCancel }: GameConfigFo
   }, [field])
 
   // 處理表單欄位變更
-  const handleInputChange = (key: string, value: any) => {
+  const handleInputChange = (key: string, value: string | number | boolean | FieldType | string[]) => {
     setFormData(prev => ({
       ...prev,
       [key]: value
@@ -75,7 +75,7 @@ export default function GameConfigForm({ field, onSave, onCancel }: GameConfigFo
   }
 
   // 處理驗證規則變更
-  const handleValidationChange = (key: string, value: any) => {
+  const handleValidationChange = (key: string, value: string | number | undefined) => {
     setFormData(prev => ({
       ...prev,
       validation: {
@@ -157,6 +157,7 @@ export default function GameConfigForm({ field, onSave, onCancel }: GameConfigFo
 
     // 清理驗證規則（移除空值）
     const cleanValidation = Object.fromEntries(
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       Object.entries(formData.validation).filter(([_, value]) => 
         value !== undefined && value !== ''
       )

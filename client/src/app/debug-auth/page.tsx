@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createSupabaseClient } from "@/lib/supabase/client";
+import Link from 'next/link'
+import { createSupabaseClient } from "@/utils/supabase/client";
 import { User } from '@supabase/supabase-js'
 
 interface Profile {
@@ -161,24 +162,24 @@ export default function DebugAuthPage() {
           <div className="bg-white p-6 rounded-lg shadow">
             <h2 className="text-xl font-semibold mb-4">快速操作</h2>
             <div className="flex flex-wrap gap-4">
-              <a 
+              <Link 
                 href="/auth" 
                 className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
               >
                 前往登入頁面
-              </a>
-              <a 
+              </Link>
+              <Link 
                 href="/admin" 
                 className="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600"
               >
                 前往管理員頁面
-              </a>
-              <a 
+              </Link>
+              <Link 
                 href="/" 
                 className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
               >
                 回到首頁
-              </a>
+              </Link>
               <button 
                 onClick={() => window.location.reload()}
                 className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"

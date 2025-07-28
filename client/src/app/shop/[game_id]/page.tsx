@@ -123,25 +123,25 @@ export default function GameDetailPage() {
       <div className="min-h-screen bg-[#0f0f23]">
         <div className="container mx-auto px-4 py-8">
           {/* 返回按鈕 */}
-          <a
+          <Link
             href="/shop"
             className="inline-flex items-center text-purple-400 hover:text-purple-300 mb-6 transition-colors"
           >
             <ChevronLeftIcon className="w-5 h-5 mr-1" />
             返回商店
-          </a>
+          </Link>
 
           <div className="text-center py-20">
             <div className="bg-red-500/10 border border-red-500 text-red-400 px-6 py-4 rounded-lg inline-block">
               {error || '遊戲不存在'}
             </div>
             <div className="mt-6">
-              <a
+              <Link
                 href="/shop"
                 className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors"
               >
                 返回商店
-              </a>
+              </Link>
             </div>
           </div>
         </div>
@@ -153,13 +153,13 @@ export default function GameDetailPage() {
     <div className="min-h-screen bg-[#0f0f23]">
       <div className="container mx-auto px-4 py-8">
         {/* 返回按鈕 */}
-        <a
+        <Link
           href="/shop"
           className="inline-flex items-center text-purple-400 hover:text-purple-300 mb-6 transition-colors"
         >
           <ChevronLeftIcon className="w-5 h-5 mr-1" />
           返回商店
-        </a>
+        </Link>
 
         {/* 遊戲資訊卡片 */}
         <div className="bg-[#2a2d4e] rounded-lg shadow-lg overflow-hidden mb-8">

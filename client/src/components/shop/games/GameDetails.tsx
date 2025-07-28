@@ -1,9 +1,11 @@
+import Image from 'next/image'
+
 export default function GameDetails({ game }) {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div>
-          <img src={game.icon_url} alt={game.name} className="w-full rounded-lg" />
+          <Image src={game.icon_url} alt={game.name} width={500} height={500} className="w-full rounded-lg" />
         </div>
         <div>
           <h1 className="text-3xl font-bold mb-4">{game.name}</h1>
@@ -19,7 +21,7 @@ export default function GameDetails({ game }) {
             <div className="grid grid-cols-2 gap-4">
               {game.game_options.map((option) => (
                 <div key={option.id} className="border rounded-lg p-4">
-                  <img src={option.icon_url} alt={option.name} className="w-16 h-16 mx-auto mb-4" />
+                  <Image src={option.icon_url} alt={option.name} width={64} height={64} className="w-16 h-16 mx-auto mb-4" />
                   <h3 className="text-lg font-bold text-center">{option.name}</h3>
                   <p className="text-center font-bold">${option.price}</p>
                 </div>

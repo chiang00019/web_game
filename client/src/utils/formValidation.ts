@@ -15,7 +15,7 @@ export interface ValidationResult {
 // 驗證單一欄位
 export function validateField(
   field: GameConfigField, 
-  value: any, 
+  value: string | number | boolean | string[] | undefined | null, 
   customMessages?: Record<string, string>
 ): ValidationError | null {
   const fieldName = field.field_label
@@ -156,7 +156,7 @@ export function validateForm(
 // 即時驗證（用於用戶輸入時）
 export function validateFieldRealtime(
   field: GameConfigField,
-  value: any,
+  value: string | number | boolean | string[] | undefined | null,
   customMessages?: Record<string, string>
 ): string | null {
   // 即時驗證時，跳過必填檢查（除非用戶已經離開欄位）
@@ -228,12 +228,12 @@ export const specialValidators = {
 // 條件式驗證（基於其他欄位的值）
 export function validateConditional(
   field: GameConfigField,
-  value: any,
+  value: string | number | boolean | string[] | undefined | null,
   formData: GameFormData,
   conditions: {
     dependsOn: string
-    when: (dependentValue: any) => boolean
-    validator: (value: any) => string | null
+    when: (dependentValue: string | number | boolean | string[] | undefined | null) => boolean
+    validator: (value: string | number | boolean | string[] | undefined | null) => string | null
   }[]
 ): string | null {
   for (const condition of conditions) {
@@ -249,8 +249,8 @@ export function validateConditional(
 // 非同步驗證（例如檢查用戶名是否已存在）
 export async function validateAsync(
   field: GameConfigField,
-  value: any,
-  validator: (value: any) => Promise<string | null>
+  value: string | number | boolean | string[] | undefined | null,
+  validator: (value: string | number | boolean | string[] | undefined | null) => Promise<string | null>
 ): Promise<string | null> {
   try {
     return await validator(value)
@@ -265,7 +265,7 @@ export function validateForSubmission(
   fields: GameConfigField[],
   formData: GameFormData,
   additionalValidators?: {
-    [fieldKey: string]: (value: any, formData: GameFormData) => string | null
+    [fieldKey: string]: (value: string | number | boolean | string[] | undefined | null, formData: GameFormData) => string | null
   }
 ): ValidationResult {
   const basicResult = validateForm(fields, formData)

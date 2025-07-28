@@ -115,7 +115,7 @@ export function useAccessibility(options: AccessibilityOptions = {}) {
   }, [enableKeyboardNavigation, handleKeyDown])
 
   // 螢幕閱讀器公告
-  const announce = useCallback((message: string, priority: 'polite' | 'assertive' = 'polite') => {
+  const announce = useCallback((message: string) => {
     if (!enableAnnouncements) return
 
     setAnnounceMessage(message)
@@ -139,7 +139,7 @@ export function useAccessibility(options: AccessibilityOptions = {}) {
     atomic?: boolean
     relevant?: string
   }) => {
-    const ariaProps: Record<string, any> = {}
+    const ariaProps: Record<string, string | boolean | undefined> = {}
 
     if (props.label) ariaProps['aria-label'] = props.label
     if (props.labelledBy) ariaProps['aria-labelledby'] = props.labelledBy

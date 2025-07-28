@@ -1,5 +1,5 @@
 import { createSupabaseServer } from '@/utils/supabase/server'
-import { cookies } from 'next/headers'
+
 import GameCard from '@/components/shop/games/GameCard'
 
 export default async function ShopPage() {

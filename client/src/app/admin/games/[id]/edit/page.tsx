@@ -1,13 +1,7 @@
 import { createSupabaseServer } from '@/utils/supabase/server'
 import GameForm from '@/components/admin/games/GameForm'
 
-type EditGamePageProps = {
-  params: {
-    id: string
-  }
-}
-
-export default async function EditGamePage({ params }: EditGamePageProps) {
+export default async function EditGamePage({ params }) {
   const supabase = await createSupabaseServer()
   const { data: game, error } = await supabase
     .from('games')

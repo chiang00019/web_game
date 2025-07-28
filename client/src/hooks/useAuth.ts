@@ -21,11 +21,8 @@ export function useAuth() {
   const [error, setError] = useState<string | null>(null)
 
   const fetchProfile = useCallback(async (user: User | null) => {
-    setLoading(true)
-    setError(null)
     if (!user) {
       setProfile(null)
-      setLoading(false)
       return
     }
 
@@ -37,7 +34,6 @@ export function useAuth() {
         .single()
 
       if (profileError && profileError.code !== 'PGRST116') {
-        // PGRST116 means no rows found, which is not a critical error for a new user.
         console.warn('Profile fetch error:', profileError)
         throw profileError
       }
@@ -45,38 +41,64 @@ export function useAuth() {
     } catch (err) {
       console.error('Auth error:', err)
       setError(err instanceof Error ? err.message : '獲取個人資料時發生錯誤')
-      setProfile(null) // Clear profile on error
-    } finally {
-      setLoading(false)
+      setProfile(null)
     }
   }, [])
 
   useEffect(() => {
-    setLoading(true)
-    // Get initial user data to prevent flicker
-    const getInitialUser = async () => {
-        const { data: { user } } = await supabase.auth.getUser();
-        setUser(user);
-        await fetchProfile(user);
-        setLoading(false);
-    }
-    getInitialUser();
+    let mounted = true
+    let authListener: any = null
 
+    const initializeAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        if (mounted) {
+          const currentUser = session?.user ?? null
+          setUser(currentUser)
+          
+          if (currentUser) {
+            await fetchProfile(currentUser)
+          } else {
+          }
+        }
+        
+        // 設置 auth state change 監聽器
+        if (mounted) {
+          const { data: listener } = supabase.auth.onAuthStateChange(
+            async (event, session) => {
+              
+              if (!mounted) return
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        const currentUser = session?.user ?? null
-        setUser(currentUser)
-        if (event === 'SIGNED_IN') {
-          await fetchProfile(currentUser)
-        } else if (event === 'SIGNED_OUT') {
-          setProfile(null)
+              const currentUser = session?.user ?? null
+              setUser(currentUser)
+              
+              if (event === 'SIGNED_IN' && currentUser) {
+                await fetchProfile(currentUser)
+              } else if (event === 'SIGNED_OUT') {
+                setProfile(null)
+              }
+            }
+          )
+          authListener = listener
+        }
+        
+      } catch (err) {
+        console.error('Auth initialization error:', err)
+        if (mounted) {
+          setError(err instanceof Error ? err.message : '認證初始化失敗')
+        }
+      } finally {
+        if (mounted) {
           setLoading(false)
         }
       }
-    )
+    }
+
+    initializeAuth()
 
     return () => {
+      mounted = false
       authListener?.subscription.unsubscribe()
     }
   }, [fetchProfile])

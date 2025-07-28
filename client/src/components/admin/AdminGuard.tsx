@@ -33,19 +33,24 @@ export default function AdminGuard({ children, fallback }: AdminGuardProps) {
     if (!loading) {
       console.log('載入完成，開始權限檢查')
       
-      if (!isAuthenticated) {
-        console.log('未認證，重定向到登入頁面')
-        router.push('/auth')
-        return
-      }
+      // 添加延遲，避免在認證狀態還在同步時就重定向
+      const timeoutId = setTimeout(() => {
+        if (!isAuthenticated) {
+          console.log('未認證，重定向到登入頁面')
+          router.push('/auth')
+          return
+        }
 
-      if (!isAdmin) {
-        console.log('非管理員，重定向到首頁')
-        router.push('/')
-        return
-      }
+        if (!isAdmin) {
+          console.log('非管理員，重定向到首頁')
+          router.push('/')
+          return
+        }
 
-      console.log('管理員權限驗證通過')
+        console.log('管理員權限驗證通過')
+      }, 100) // 100ms 延遲
+
+      return () => clearTimeout(timeoutId)
     } else {
       console.log('仍在載入中...')
     }

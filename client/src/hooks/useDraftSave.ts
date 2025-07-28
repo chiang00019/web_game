@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 
-interface DraftData {
-  [key: string]: any
+type DraftData<T> = T & {
   lastSaved: number
 }
 
@@ -11,11 +10,11 @@ interface UseDraftSaveOptions {
   key: string // localStorage key
   expireTime?: number // 過期時間 (毫秒)，預設 24 小時
   autoSaveDelay?: number // 自動儲存延遲 (毫秒)，預設 2 秒
-  onRestore?: (data: any) => void // 恢復資料時的回調
-  onSave?: (data: any) => void // 儲存時的回調
+  onRestore?: (data: T) => void // 恢復資料時的回調
+  onSave?: (data: T) => void // 儲存時的回調
 }
 
-export function useDraftSave<T extends Record<string, any>>(
+export function useDraftSave<T extends Record<string, unknown>>(
   initialData: T,
   options: UseDraftSaveOptions
 ) {
@@ -112,7 +111,7 @@ export function useDraftSave<T extends Record<string, any>>(
     if (draftData) {
       const { lastSaved, ...restData } = draftData
       setData(restData as T)
-      onRestore?.(restData)
+      onRestore?.(restData as T)
       return true
     }
     return false
