@@ -8,7 +8,7 @@ env.bak/
 venv.bak/
 
 # Node
-/node_modules
+*/node_modules
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

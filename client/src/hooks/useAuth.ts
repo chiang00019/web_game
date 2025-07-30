@@ -47,7 +47,7 @@ export function useAuth() {
 
   useEffect(() => {
     let mounted = true
-    let authListener: any = null
+    let authListener: { subscription: { unsubscribe: () => void } } | null = null
 
     const initializeAuth = async () => {
       try {
