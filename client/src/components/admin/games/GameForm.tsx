@@ -33,10 +33,25 @@ export default function GameForm({ game }: GameFormProps) {
   const [isActive, setIsActive] = useState(true)
   const [icon, setIcon] = useState<File | null>(null)
   const [iconPreview, setIconPreview] = useState<string | null>(null)
-  const [options, setOptions] = useState<GameOption[]>(game ? game.options : [{ name: '', icon: null, price: '' }])
-  const [optionIconPreviews, setOptionIconPreviews] = useState<Array<string | null>>(
-    game ? game.options.map(opt => opt.icon ? URL.createObjectURL(opt.icon as File) : null) : Array(options.length).fill(null)
+  const [options, setOptions] = useState<GameOption[]>(
+    game && game.options && game.options.length > 0 
+      ? game.options.map(opt => ({ name: opt.name, icon: null, price: opt.price.toString() }))
+      : [{ name: '', icon: null, price: '' }]
   )
+  const [optionIconPreviews, setOptionIconPreviews] = useState<Array<string | null>>(
+    game && game.options && game.options.length > 0
+      ? game.options.map(() => null) // 編輯模式下先不顯示預覽，因為圖片是從伺服器來的
+      : [null]
+  )
+
+  const handlePriceChange = (index: number, value: string) => {
+    // 價格欄位只允許數字和小數點，但不能以小數點開頭
+    // 允許的格式：空字串、純數字、數字.數字
+    if (value === '' || /^\d+\.?\d*$/.test(value)) {
+      handleOptionChange(index, 'price', value)
+    }
+    // 如果不符合格式，就不更新值（忽略輸入）
+  }
 
   const handleOptionChange = (index: number, field: 'icon' | 'name' | 'price', value: string | File | null) => {
     const newOptions = [...options]
@@ -69,37 +84,106 @@ export default function GameForm({ game }: GameFormProps) {
   }
 
   const removeOption = (index: number) => {
+    // 確保至少保留一個選項
+    if (options.length <= 1) {
+      alert('遊戲必須至少有一個選項，無法刪除')
+      return
+    }
+    
     const newOptions = [...options]
+    const newOptionIconPreviews = [...optionIconPreviews]
     newOptions.splice(index, 1)
+    newOptionIconPreviews.splice(index, 1)
     setOptions(newOptions)
+    setOptionIconPreviews(newOptionIconPreviews)
+  }
+
+  const validateForm = () => {
+    // 檢查遊戲名稱
+    if (!name.trim()) {
+      alert('遊戲名稱是必填的')
+      return false
+    }
+
+    // 檢查至少要有一個選項
+    if (options.length === 0) {
+      alert('遊戲必須要有至少一個選項')
+      return false
+    }
+
+    // 檢查每個選項
+    for (let i = 0; i < options.length; i++) {
+      const option = options[i]
+      
+      // 檢查選項名稱
+      if (!option.name.trim()) {
+        alert(`選項 ${i + 1} 的名稱是必填的`)
+        return false
+      }
+
+      // 檢查選項價格
+      if (!option.price.trim()) {
+        alert(`選項 ${i + 1} 的價格是必填的`)
+        return false
+      }
+
+      // 檢查價格格式是否正確
+      if (!/^\d+(\.\d+)?$/.test(option.price)) {
+        alert(`選項 ${i + 1} 的價格格式不正確，請輸入有效的數字（例如：100 或 99.99）`)
+        return false
+      }
+
+      // 檢查價格是否為數字且不為負數
+        const price = parseFloat(option.price)
+      if (isNaN(price) || price < 0) {
+        alert(`選項 ${i + 1} 的價格必須是有效的數字且不能為負數`)
+        return false
+      }
+    }
+
+    return true
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const formData = new FormData()
-    formData.append('name', name)
-    formData.append('description', description)
-    formData.append('is_active', isActive.toString())
-    if (icon) {
-      formData.append('icon', icon)
+    
+    // 執行表單驗證
+    if (!validateForm()) {
+      return
     }
-    options.forEach((option: GameOption, index: number) => {
-      formData.append(`options[${index}][name]`, option.name)
-      if (option.icon) {
-        formData.append(`options[${index}][icon]`, option.icon)
+    
+    try {
+      const formData = new FormData()
+      formData.append('name', name)
+      formData.append('description', description)
+      formData.append('is_active', isActive.toString())
+      if (icon) {
+        formData.append('icon', icon)
       }
-      formData.append(`options[${index}][price]`, option.price)
-    })
+      options.forEach((option: GameOption, index: number) => {
+        formData.append(`options[${index}][name]`, option.name)
+        if (option.icon) {
+          formData.append(`options[${index}][icon]`, option.icon)
+        }
+        formData.append(`options[${index}][price]`, option.price)
+      })
 
-    const method = game ? 'PUT' : 'POST'
-    const url = game ? `/api/games/${game.id}` : '/api/games'
-    const res = await fetch(url, {
-      method,
-      body: formData,
-    })
+      const method = game ? 'PUT' : 'POST'
+      const url = game ? `/api/games/${game.id}` : '/api/games'
+      const res = await fetch(url, {
+        method,
+        body: formData,
+      })
 
-    if (res.ok) {
-      router.push('/admin/games')
+      if (res.ok) {
+        router.push('/admin/games')
+      } else {
+        console.error('Failed to save game')
+        alert('儲存失敗，請稍後再試')
+      }
+    } catch (error) {
+      console.error('Error saving game:', error)
+      alert('發生錯誤，請稍後再試')
     }
   }
 
@@ -238,9 +322,11 @@ export default function GameForm({ game }: GameFormProps) {
                       
 
                       <div className="col-span-4">
-                        <Label className="text-sm font-medium text-gray-600 mb-1 block">選項名稱</Label>
+                        <Label className="text-sm font-medium text-gray-600 mb-1 block">
+                          選項名稱 <span className="text-red-500">*</span>
+                        </Label>
                         <Input
-                          placeholder="e.g., Basic Package"
+                          placeholder="例如: 圓神結晶"
                           value={option.name}
                           onChange={(e) => handleOptionChange(index, 'name', e.target.value)}
                           className="border-gray-200 focus:border-green-400 transition-all duration-200 text-black"
@@ -248,12 +334,16 @@ export default function GameForm({ game }: GameFormProps) {
                       </div>
 
                       <div className="col-span-4">
-                        <Label className="text-sm font-medium text-gray-600 mb-1 block">價格</Label>
+                        <Label className="text-sm font-medium text-gray-600 mb-1 block">
+                          價格 <span className="text-red-500">*</span>
+                          <span className="text-xs text-gray-500 ml-1">(僅限數字)</span>
+                        </Label>
                         <Input
-                          placeholder="$0.00"
+                          placeholder="例如: 100 或 99.99"
                           value={option.price}
-                          onChange={(e) => handleOptionChange(index, 'price', e.target.value)}
+                          onChange={(e) => handlePriceChange(index, e.target.value)}
                           className="border-gray-200 focus:border-green-400 transition-all duration-200 text-black"
+                          inputMode="decimal"
                         />
                       </div>
                       

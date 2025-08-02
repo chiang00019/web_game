@@ -2,11 +2,14 @@ import { createSupabaseServer } from '@/utils/supabase/server'
 import GameForm from '@/components/admin/games/GameForm'
 
 export default async function EditGamePage({ params }) {
+  const resolvedParams = await params
   const supabase = await createSupabaseServer()
+  
+  // 獲取遊戲基本資料
   const { data: game, error } = await supabase
     .from('games')
     .select('*')
-    .eq('id', params.id)
+    .eq('id', resolvedParams.id)
     .single()
 
   if (error) {
@@ -14,10 +17,26 @@ export default async function EditGamePage({ params }) {
     return <div>Error fetching game</div>
   }
 
+  // 獲取遊戲選項
+  const { data: options, error: optionsError } = await supabase
+    .from('game_options')
+    .select('*')
+    .eq('game_id', resolvedParams.id)
+
+  if (optionsError) {
+    console.error('Error fetching game options:', optionsError)
+  }
+
+  // 將選項加入遊戲物件
+  const gameWithOptions = {
+    ...game,
+    options: options || []
+  }
+
   return (
     <div>
       <h1 className="text-2xl font-bold mb-4">Edit Game</h1>
-      <GameForm game={game} />
+      <GameForm game={gameWithOptions} />
     </div>
   )
 }
