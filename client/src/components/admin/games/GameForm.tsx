@@ -30,6 +30,7 @@ export default function GameForm({ game }: GameFormProps) {
   const router = useRouter()
   const [name, setName] = useState(game ? game.name : '')
   const [description, setDescription] = useState(game ? game.description : '')
+  const [isActive, setIsActive] = useState(true)
   const [icon, setIcon] = useState<File | null>(null)
   const [iconPreview, setIconPreview] = useState<string | null>(null)
   const [options, setOptions] = useState<GameOption[]>(game ? game.options : [{ name: '', icon: null, price: '' }])
@@ -78,6 +79,7 @@ export default function GameForm({ game }: GameFormProps) {
     const formData = new FormData()
     formData.append('name', name)
     formData.append('description', description)
+    formData.append('is_active', isActive.toString())
     if (icon) {
       formData.append('icon', icon)
     }
@@ -141,8 +143,26 @@ export default function GameForm({ game }: GameFormProps) {
                       id="description"
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
-                      className="border-2 border-gray-200 focus:border-blue-400 transition-all duration-200 bg-white/70 h-[calc(100%-2rem)] resize-none text-black"
+                      className="border-2 border-gray-200 focus:border-blue-400 transition-all duration-200 bg-white/70 h-[calc(100%-4rem)] resize-none text-black"
                     />
+                  </div>
+                  
+                  <div className="space-y-2 mt-4">
+                    <Label className="text-sm font-medium text-gray-700 flex items-center">
+                      <span className="mr-2">遊戲狀態</span>
+                    </Label>
+                    <div className="flex items-center space-x-3">
+                      <input
+                        type="checkbox"
+                        id="is_active"
+                        checked={isActive}
+                        onChange={(e) => setIsActive(e.target.checked)}
+                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                      <Label htmlFor="is_active" className="text-sm text-gray-700">
+                        {isActive ? '✅ 啟用' : '❌ 停用'}
+                      </Label>
+                    </div>
                   </div>
                 </div>
                 
