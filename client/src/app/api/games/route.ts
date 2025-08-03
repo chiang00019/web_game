@@ -16,6 +16,23 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const supabase = await createSupabaseServer()
+    
+    // 檢查用戶是否已登入且為管理員
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: '未授權' }, { status: 401 })
+    }
+
+    // 檢查是否為管理員
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_admin')
+      .eq('user_id', user.id)
+      .single()
+
+    if (!profile?.is_admin) {
+      return NextResponse.json({ error: '需要管理員權限' }, { status: 403 })
+    }
     const formData = await request.formData()
     
     const name = formData.get('name') as string
@@ -91,6 +108,7 @@ export async function POST(request: Request) {
       }
     }
 
+    console.log('Created game data:', gameData) // 調試用
     return NextResponse.json({ 
       message: 'Game created successfully',
       game: gameData 

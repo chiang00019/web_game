@@ -15,19 +15,28 @@ interface GameOption {
   price: string
 }
 
+interface Tag {
+  id: number
+  name: string
+  display_name: string
+}
+
 interface Game {
   id?: string
   name: string
   description: string
   servers?: string[]
   options: GameOption[]
+  tags?: Tag[]
+  availableTags?: Tag[]
 }
 
 interface GameFormProps {
   game?: Game
+  availableTags?: Tag[]
 }
 
-export default function GameForm({ game }: GameFormProps) {
+export default function GameForm({ game, availableTags }: GameFormProps) {
   const router = useRouter()
   const [name, setName] = useState(game ? game.name : '')
   const [description, setDescription] = useState(game ? game.description : '')
@@ -35,6 +44,9 @@ export default function GameForm({ game }: GameFormProps) {
   const [icon, setIcon] = useState<File | null>(null)
   const [iconPreview, setIconPreview] = useState<string | null>(null)
   const [servers, setServers] = useState<string[]>(game?.servers || [''])
+  const [selectedTags, setSelectedTags] = useState<number[]>(
+    game?.tags?.map(tag => tag.id) || []
+  )
   const [options, setOptions] = useState<GameOption[]>(
     game && game.options && game.options.length > 0 
       ? game.options.map(opt => ({ name: opt.name, icon: null, price: opt.price.toString() }))
@@ -104,6 +116,14 @@ export default function GameForm({ game }: GameFormProps) {
     const newServers = [...servers]
     newServers[index] = value
     setServers(newServers)
+  }
+
+  const handleTagToggle = (tagId: number) => {
+    setSelectedTags(prev => 
+      prev.includes(tagId) 
+        ? prev.filter(id => id !== tagId)
+        : [...prev, tagId]
+    )
   }
 
   const removeOption = (index: number) => {
@@ -196,6 +216,7 @@ export default function GameForm({ game }: GameFormProps) {
       formData.append('description', description)
       formData.append('is_active', isActive.toString())
       formData.append('servers', JSON.stringify(servers.filter(server => server.trim())))
+      formData.append('tags', JSON.stringify(selectedTags))
       if (icon) {
         formData.append('icon', icon)
       }
@@ -209,16 +230,42 @@ export default function GameForm({ game }: GameFormProps) {
 
       const method = game ? 'PUT' : 'POST'
       const url = game ? `/api/games/${game.id}` : '/api/games'
+      console.log('Making request to:', url, 'with method:', method) // 調試用
+      
       const res = await fetch(url, {
         method,
         body: formData,
       })
 
+      console.log('Response status:', res.status, 'OK:', res.ok) // 調試用
+      
       if (res.ok) {
+        const responseData = await res.json()
+        console.log('Response data:', responseData) // 調試用
+        const gameId = game?.id || responseData.game?.id
+
+        // 更新遊戲標籤 - 只有在有有效 gameId 且有選擇標籤時才執行
+        if (gameId && selectedTags.length > 0) {
+          console.log('Updating tags for game ID:', gameId) // 調試用
+          const tagsResponse = await fetch(`/api/games/${gameId}/tags`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tagIds: selectedTags }),
+          })
+
+          if (!tagsResponse.ok) {
+            console.error('Failed to update tags')
+            alert('遊戲儲存成功，但標籤更新失敗')
+            return
+          }
+        }
+
+        alert(game ? '遊戲更新成功！' : '遊戲建立成功！')
         router.push('/admin/games')
       } else {
-        console.error('Failed to save game')
-        alert('儲存失敗，請稍後再試')
+        const errorData = await res.text()
+        console.error('Failed to save game. Status:', res.status, 'Error:', errorData)
+        alert(`儲存失敗：${res.status} - ${errorData}`)
       }
     } catch (error) {
       console.error('Error saving game:', error)
@@ -324,6 +371,62 @@ export default function GameForm({ game }: GameFormProps) {
                   </div>
                 </div>
               </div>
+            </div>
+          </CardContent>
+
+          {/* Game Tags Section */}
+          <CardContent className="px-8 pb-8">
+            <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-xl border border-purple-100">
+              <h3 className="text-lg font-semibold text-gray-800 mb-6 flex items-center">
+                <span className="bg-purple-100 p-2 rounded-full mr-3">🏷️</span>
+                遊戲標籤
+              </h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {(availableTags || game?.availableTags)?.map((tag) => (
+                  <div
+                    key={tag.id}
+                    className={`p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
+                      selectedTags.includes(tag.id)
+                        ? 'border-purple-500 bg-purple-100 shadow-md'
+                        : 'border-gray-200 bg-white hover:border-purple-300 hover:shadow-sm'
+                    }`}
+                    onClick={() => handleTagToggle(tag.id)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-gray-800">{tag.display_name}</span>
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                        selectedTags.includes(tag.id)
+                          ? 'border-purple-500 bg-purple-500'
+                          : 'border-gray-300'
+                      }`}>
+                        {selectedTags.includes(tag.id) && (
+                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-600 mt-2">
+                      {tag.name === '免帳密UID儲值' && '無需提供帳號密碼，僅需UID即可儲值'}
+                      {tag.name === '熱門遊戲' && '目前最受歡迎的遊戲，會顯示在首頁'}
+                      {tag.name === '新品上架' && '最新推出的遊戲項目'}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              
+              {selectedTags.length > 0 && (
+                <div className="mt-4 p-3 bg-purple-50 rounded-lg">
+                  <p className="text-sm text-purple-700">
+                    已選擇 {selectedTags.length} 個標籤：
+                    {(availableTags || game?.availableTags)
+                      ?.filter(tag => selectedTags.includes(tag.id))
+                      .map(tag => tag.display_name)
+                      .join('、')}
+                  </p>
+                </div>
+              )}
             </div>
           </CardContent>
 

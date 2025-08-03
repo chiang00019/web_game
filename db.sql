@@ -42,6 +42,7 @@ DROP TABLE IF EXISTS public.banner CASCADE;
 
 -- 6. Drop custom types, which are used by tables.
 DROP TYPE IF EXISTS public.order_status;
+DROP TYPE IF EXISTS public.game_tag_type;
 
 
 -- ========= CREATE TYPES =========
@@ -51,6 +52,12 @@ CREATE TYPE public.order_status AS ENUM (
   'completed',
   'failed',
   'refunded'
+);
+
+CREATE TYPE public.game_tag_type AS ENUM (
+  '免帳密UID儲值',
+  '熱門遊戲',
+  '新品上架'
 );
 
 
@@ -78,7 +85,8 @@ CREATE TABLE public.game_options (
 
 CREATE TABLE public.tags (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL UNIQUE,
+    name public.game_tag_type NOT NULL UNIQUE,
+    display_name VARCHAR(255) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -306,3 +314,15 @@ $$;
 
 -- Execute the initialization function
 SELECT public.initialize_banner_display_order();
+
+-- ========= GAME TAGS INITIALIZATION =========
+
+-- Insert predefined game tags
+INSERT INTO public.tags (name, display_name) VALUES
+  ('免帳密UID儲值', '免帳密UID儲值'),
+  ('熱門遊戲', '熱門遊戲'),
+  ('新品上架', '新品上架')
+ON CONFLICT (name) DO NOTHING;
+
+-- hank_admin
+UPDATE public.profiles SET is_admin = true WHERE user_name='hank';
