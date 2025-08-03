@@ -5,21 +5,40 @@ import { useAuth } from '@/hooks/useAuth'
 import { useDraftSave } from '@/hooks/useDraftSave'
 import Link from 'next/link'
 import { ClockIcon, SaveIcon, RotateCcwIcon, XIcon } from 'lucide-react'
-import DynamicGameOptions from './DynamicGameOptions'
-import { validateForSubmission, validateFieldRealtime } from '@/utils/formValidation'
-import { 
-  Game, 
-  GameConfig, 
-  GamePackage, 
-  PaymentMethod, 
-  GameFormData, 
-  OrderFormData 
-} from '@/types/gameConfig'
+
+interface Game {
+  id: number
+  name: string
+  description?: string
+  icon_path?: string
+  is_active: boolean
+}
+
+interface GameOption {
+  id: number
+  game_id: number
+  name: string
+  icon_path?: string
+  price: number
+}
+
+interface PaymentMethod {
+  payment_method_id: number
+  method: string
+}
+
+interface OrderFormData {
+  game_uid: string
+  game_server: string
+  game_username: string
+  package_id: number
+  payment_method_id: number
+  note?: string
+}
 
 interface GameTopupTemplateProps {
   game: Game
-  gameConfig: GameConfig
-  packages: GamePackage[]
+  gameOptions: GameOption[]
   paymentMethods: PaymentMethod[]
   onOrderSubmit: (orderData: OrderFormData) => Promise<void>
 }

@@ -5,101 +5,145 @@ import { useParams } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { ChevronLeftIcon } from 'lucide-react'
-import GameTopupTemplate from '@/components/shop/GameTopupTemplate'
-import { 
-  getGameConfig, 
-  getGameInfo, 
-  getGamePackages, 
-  getPaymentMethods 
-} from '@/data/mockGameConfigs'
-import { Game, GameConfig, GamePackage, PaymentMethod, OrderFormData } from '@/types/gameConfig'
+import SimpleGameTopupTemplate from '@/components/shop/SimpleGameTopupTemplate'
+import { createSupabaseClient } from '@/utils/supabase/client'
+
+interface Game {
+  id: number
+  name: string
+  description?: string
+  icon_path?: string
+  is_active: boolean
+}
+
+interface GameOption {
+  id: number
+  game_id: number
+  name: string
+  icon_path?: string
+  price: number
+}
+
+interface PaymentMethod {
+  payment_method_id: number
+  method: string
+}
+
+interface OrderFormData {
+  game_uid: string
+  game_server: string
+  game_username: string
+  package_id: number
+  payment_method_id: number
+  note?: string
+}
 
 export default function GameDetailPage() {
   const params = useParams()
   const gameId = parseInt(params.game_id as string)
 
   const [game, setGame] = useState<Game | null>(null)
-  const [gameConfig, setGameConfig] = useState<GameConfig | null>(null)
-  const [packages, setPackages] = useState<GamePackage[]>([])
+  const [gameOptions, setGameOptions] = useState<GameOption[]>([])
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const fetchGameData = async () => {
+    const loadGameData = async () => {
       try {
         setLoading(true)
-        setError(null)
-
-        // 使用 mock 資料（在實際開發中，這裡會是 API 呼叫）
-        const gameInfo = getGameInfo(gameId)
+        const supabase = createSupabaseClient()
         
-        if (!gameInfo) {
-          setError('遊戲不存在')
+        // 載入遊戲基本資料
+        const { data: gameData, error: gameError } = await supabase
+          .from('games')
+          .select('*')
+          .eq('id', gameId)
+          .eq('is_active', true)
+          .single()
+
+        if (gameError || !gameData) {
+          setError('找不到指定的遊戲或遊戲已停用')
           return
         }
 
-        if (!gameInfo.is_active) {
-          setError('此遊戲目前暫停服務')
-          return
+        // 載入遊戲選項
+        const { data: optionsData, error: optionsError } = await supabase
+          .from('game_options')
+          .select('*')
+          .eq('game_id', gameId)
+          .order('price', { ascending: true })
+
+        if (optionsError) {
+          console.error('載入遊戲選項失敗:', optionsError)
+          setGameOptions([])
+        } else {
+          setGameOptions(optionsData || [])
         }
 
-        setGame(gameInfo)
-        setGameConfig(getGameConfig(gameId))
-        setPackages(getGamePackages(gameId))
-        setPaymentMethods(getPaymentMethods())
+        // 載入支付方式
+        const { data: paymentData, error: paymentError } = await supabase
+          .from('payment_method')
+          .select('*')
 
-      } catch (error) {
-        console.error('Error fetching game data:', error)
-        setError('載入遊戲資訊失敗')
+        if (paymentError) {
+          console.error('載入支付方式失敗:', paymentError)
+          setPaymentMethods([])
+        } else {
+          setPaymentMethods(paymentData || [])
+        }
+
+        setGame(gameData)
+      } catch (err) {
+        console.error('載入遊戲數據失敗:', err)
+        setError('載入遊戲數據失敗，請稍後再試')
       } finally {
         setLoading(false)
       }
     }
 
     if (gameId) {
-      fetchGameData()
+      loadGameData()
     }
   }, [gameId])
 
   // 處理訂單提交
   const handleOrderSubmit = async (orderData: OrderFormData) => {
     try {
-      console.log('提交訂單:', {
-        gameId,
-        gameName: game?.game_name,
-        orderData
-      })
+      const supabase = createSupabaseClient()
+      
+      // 獲取當前用戶
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      if (userError || !user) {
+        alert('請先登入')
+        return
+      }
 
-      // 模擬 API 呼叫
-      await new Promise(resolve => setTimeout(resolve, 1000))
-
-      // 在實際開發中，這裡會呼叫 API
-      /*
-      const response = await fetch('/api/orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      // 提交訂單
+      const { data, error } = await supabase
+        .from('order')
+        .insert([{
+          user_id: user.id,
           game_id: gameId,
           package_id: orderData.package_id,
           payment_method_id: orderData.payment_method_id,
-          game_data: orderData.game_data,
-          quantity: orderData.quantity
-        }),
-      })
+          game_uid: orderData.game_uid,
+          game_server: orderData.game_server,
+          game_username: orderData.game_username,
+          note: orderData.note,
+          status: 'pending'
+        }])
+        .select()
 
-      if (!response.ok) {
-        throw new Error('訂單提交失敗')
+      if (error) {
+        console.error('訂單提交失敗:', error)
+        throw new Error('訂單提交失敗，請稍後再試')
       }
 
-      const result = await response.json()
-      console.log('訂單建立成功:', result)
-      */
-
+      alert('訂單提交成功！')
+      console.log('訂單已建立:', data)
     } catch (error) {
-      console.error('訂單提交錯誤:', error)
+      console.error('訂單提交失敗:', error)
       throw error
     }
   }
@@ -118,7 +162,7 @@ export default function GameDetailPage() {
   }
 
   // 錯誤狀態
-  if (error || !game || !gameConfig) {
+  if (error || !game) {
     return (
       <div className="min-h-screen bg-[#0f0f23]">
         <div className="container mx-auto px-4 py-8">
@@ -177,7 +221,7 @@ export default function GameDetailPage() {
                 ) : (
                   <div className="h-full w-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
                     <span className="text-white text-2xl font-bold">
-                      {game.game_name.charAt(0)}
+                      {game.name.charAt(0)}
                     </span>
                   </div>
                 )}
@@ -187,13 +231,13 @@ export default function GameDetailPage() {
             {/* 遊戲詳細資訊 */}
             <div className="p-8">
               <div className="uppercase tracking-wide text-sm text-purple-400 font-semibold">
-                {game.category || '遊戲'}
+                遊戲
               </div>
               <h1 className="mt-1 text-3xl font-bold text-white">
-                {game.game_name}
+                {game.name}
               </h1>
               <p className="mt-2 text-gray-300">
-                {game.description || `歡迎來到 ${game.game_name} 的儲值頁面。請選擇您需要的套餐並填寫相關資訊，我們將盡快為您處理訂單。`}
+                {game.description || `歡迎來到 ${game.name} 的儲值頁面。請選擇您需要的套餐並填寫相關資訊，我們將盡快為您處理訂單。`}
               </p>
               
               {/* 遊戲狀態 */}
@@ -207,10 +251,9 @@ export default function GameDetailPage() {
         </div>
 
         {/* 模板化儲值表單 */}
-        <GameTopupTemplate
+        <SimpleGameTopupTemplate
           game={game}
-          gameConfig={gameConfig}
-          packages={packages}
+          gameOptions={gameOptions}
           paymentMethods={paymentMethods}
           onOrderSubmit={handleOrderSubmit}
         />
