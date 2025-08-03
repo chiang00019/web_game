@@ -8,6 +8,7 @@ interface Game {
   name: string
   description?: string
   icon_path?: string
+  servers?: string[]
   is_active: boolean
 }
 
@@ -198,13 +199,28 @@ export default function SimpleGameTopupTemplate({
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 伺服器 <span className="text-red-400">*</span>
               </label>
-              <input
-                type="text"
-                value={formData.game_server}
-                onChange={(e) => handleInputChange('game_server', e.target.value)}
-                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
-                placeholder="請輸入伺服器"
-              />
+              {game.servers && game.servers.length > 0 ? (
+                <select
+                  value={formData.game_server}
+                  onChange={(e) => handleInputChange('game_server', e.target.value)}
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                >
+                  <option value="">請選擇伺服器</option>
+                  {game.servers.map((server, index) => (
+                    <option key={index} value={server} className="bg-gray-700 text-white">
+                      {server}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={formData.game_server}
+                  onChange={(e) => handleInputChange('game_server', e.target.value)}
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                  placeholder="請輸入伺服器"
+                />
+              )}
               {errors.game_server && (
                 <p className="text-red-400 text-sm mt-1">{errors.game_server}</p>
               )}

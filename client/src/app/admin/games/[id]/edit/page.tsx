@@ -35,7 +35,6 @@ export default async function EditGamePage({ params }) {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-4">Edit Game</h1>
       <GameForm game={gameWithOptions} />
     </div>
   )

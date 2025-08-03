@@ -13,6 +13,7 @@ interface Game {
   name: string
   description?: string
   icon_path?: string
+  servers?: string[]
   is_active: boolean
 }
 

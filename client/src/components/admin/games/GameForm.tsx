@@ -19,6 +19,7 @@ interface Game {
   id?: string
   name: string
   description: string
+  servers?: string[]
   options: GameOption[]
 }
 
@@ -33,6 +34,7 @@ export default function GameForm({ game }: GameFormProps) {
   const [isActive, setIsActive] = useState(true)
   const [icon, setIcon] = useState<File | null>(null)
   const [iconPreview, setIconPreview] = useState<string | null>(null)
+  const [servers, setServers] = useState<string[]>(game?.servers || [''])
   const [options, setOptions] = useState<GameOption[]>(
     game && game.options && game.options.length > 0 
       ? game.options.map(opt => ({ name: opt.name, icon: null, price: opt.price.toString() }))
@@ -83,6 +85,27 @@ export default function GameForm({ game }: GameFormProps) {
     setOptions([...options, { name: '', icon: null, price: '' }])
   }
 
+  const addServer = () => {
+    setServers([...servers, ''])
+  }
+
+  const removeServer = (index: number) => {
+    if (servers.length <= 1) {
+      alert('遊戲必須至少有一個伺服器，無法刪除')
+      return
+    }
+    
+    const newServers = [...servers]
+    newServers.splice(index, 1)
+    setServers(newServers)
+  }
+
+  const handleServerChange = (index: number, value: string) => {
+    const newServers = [...servers]
+    newServers[index] = value
+    setServers(newServers)
+  }
+
   const removeOption = (index: number) => {
     // 確保至少保留一個選項
     if (options.length <= 1) {
@@ -105,13 +128,28 @@ export default function GameForm({ game }: GameFormProps) {
       return false
     }
 
+    // 檢查至少要有一個伺服器
+    if (servers.length === 0) {
+      alert('遊戲必須要有至少一個伺服器')
+      return false
+    }
+
+    // 檢查每個伺服器
+    for (let i = 0; i < servers.length; i++) {
+      const server = servers[i]
+      
+      if (!server.trim()) {
+        alert(`伺服器 ${i + 1} 的名稱是必填的`)
+        return false
+      }
+    }
+
     // 檢查至少要有一個選項
     if (options.length === 0) {
       alert('遊戲必須要有至少一個選項')
       return false
     }
 
-    // 檢查每個選項
     for (let i = 0; i < options.length; i++) {
       const option = options[i]
       
@@ -157,6 +195,7 @@ export default function GameForm({ game }: GameFormProps) {
       formData.append('name', name)
       formData.append('description', description)
       formData.append('is_active', isActive.toString())
+      formData.append('servers', JSON.stringify(servers.filter(server => server.trim())))
       if (icon) {
         formData.append('icon', icon)
       }
@@ -285,6 +324,54 @@ export default function GameForm({ game }: GameFormProps) {
                   </div>
                 </div>
               </div>
+            </div>
+          </CardContent>
+
+          {/* Game Servers Section */}
+          <CardContent className="px-8 pb-8">
+            <div className="bg-gradient-to-r from-orange-50 to-red-50 p-6 rounded-xl border border-orange-100">
+              <h3 className="text-lg font-semibold text-gray-800 mb-6 flex items-center">
+                <span className="bg-orange-100 p-2 rounded-full mr-3">🖥️</span>
+                遊戲伺服器
+              </h3>
+              
+              {servers.map((server, index) => (
+                <div key={index} className="mb-4 p-4 bg-white rounded-lg border border-orange-200 shadow-sm">
+                  <div className="grid grid-cols-12 gap-4 items-center">
+                    <div className="col-span-10">
+                      <Label className="text-sm font-medium text-gray-600 mb-1 block">
+                        伺服器 {index + 1} <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        placeholder="例如: 台服、美服、歐服"
+                        value={server}
+                        onChange={(e) => handleServerChange(index, e.target.value)}
+                        className="border-gray-200 focus:border-orange-400 transition-all duration-200 text-black"
+                      />
+                    </div>
+                    
+                    <div className="col-span-2">
+                      <Button 
+                        type="button"
+                        variant="destructive" 
+                        size="sm"
+                        onClick={() => removeServer(index)}
+                        className="w-full bg-red-500 hover:bg-red-600 transition-all duration-200 mt-6"
+                      >
+                        刪除
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              
+              <Button 
+                type="button"
+                onClick={addServer}
+                className="w-full bg-orange-500 hover:bg-orange-600 transition-all duration-200 py-3"
+              >
+                新增伺服器
+              </Button>
             </div>
           </CardContent>
 

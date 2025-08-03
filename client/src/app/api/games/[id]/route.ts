@@ -27,6 +27,8 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     const name = formData.get('name') as string
     const description = formData.get('description') as string
     const isActive = formData.get('is_active') === 'true'
+    const serversStr = formData.get('servers') as string
+    const servers = serversStr ? JSON.parse(serversStr) : []
     
     // 更新遊戲基本資料
     const { data: gameData, error: gameError } = await supabase
@@ -34,6 +36,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       .update({ 
         name, 
         description,
+        servers,
         is_active: isActive 
       })
       .eq('id', resolvedParams.id)

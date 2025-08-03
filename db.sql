@@ -2,12 +2,15 @@
 -- It first drops all tables in the correct order and then recreates them.
 
 -- ========= DROP DEPENDENCIES (in correct order) =========
--- 1. Drop functions that might be used by other functions or policies first.
-DROP FUNCTION IF EXISTS public.get_top_customers(integer, text, text);
-
--- 2. Drop triggers, which depend on functions and tables.
+-- 1. Drop triggers first (they depend on functions and tables)
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 DROP TRIGGER IF EXISTS on_order_updated ON public."order";
+DROP TRIGGER IF EXISTS on_games_updated ON public.games;
+DROP TRIGGER IF EXISTS on_game_options_updated ON public.game_options;
+
+-- 2. Drop functions that might be used by other functions or policies
+DROP FUNCTION IF EXISTS public.get_top_customers(integer, text, text);
+DROP FUNCTION IF EXISTS public.handle_updated_at() CASCADE;
 
 -- 3. Drop policies that depend on functions.
 DROP POLICY IF EXISTS "Admins can access all profiles" ON public.profiles;
@@ -22,7 +25,6 @@ DROP POLICY IF EXISTS "Admins can manage game_tags" ON public.game_tags;
 
 -- 4. Drop the rest of the functions.
 DROP FUNCTION IF EXISTS public.handle_new_user();
-DROP FUNCTION IF EXISTS public.handle_updated_at();
 DROP FUNCTION IF EXISTS public.is_admin();
 
 -- 5. Drop tables. CASCADE handles foreign key constraints and other dependencies.
@@ -58,6 +60,7 @@ CREATE TABLE public.games (
   name VARCHAR(255) NOT NULL,
   description TEXT,
   icon_path VARCHAR(255),
+  servers TEXT[], -- 儲存伺服器列表的陣列
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP

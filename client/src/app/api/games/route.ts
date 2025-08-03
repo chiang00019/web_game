@@ -23,6 +23,8 @@ export async function POST(request: Request) {
     const isActiveStr = formData.get('is_active') as string
     const isActive = isActiveStr === 'true'
     const iconFile = formData.get('icon') as File | null
+    const serversStr = formData.get('servers') as string
+    const servers = serversStr ? JSON.parse(serversStr) : []
     
     // 處理遊戲圖片上傳
     let icon_path = null
@@ -39,6 +41,7 @@ export async function POST(request: Request) {
         name, 
         description,
         icon_path,
+        servers,
         is_active: isActive 
       }])
       .select()
