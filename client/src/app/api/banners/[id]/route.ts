@@ -13,7 +13,7 @@ export async function PUT(
   const { data, error } = await supabase
     .from('banner')
     .update(banner)
-    .eq('id', params.id)
+    .eq('banner_id', params.id)
     .select()
     .single()
 
@@ -33,7 +33,7 @@ export async function DELETE(
   const { error } = await supabase
     .from('banner')
     .delete()
-    .eq('id', params.id)
+    .eq('banner_id', params.id)
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
@@ -51,7 +51,7 @@ export async function GET(
   const { data: banner, error } = await supabase
     .from('banner')
     .select('*')
-    .eq('id', params.id)
+    .eq('banner_id', params.id)
     .single()
 
   if (error) {

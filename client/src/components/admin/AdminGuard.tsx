@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 
@@ -11,8 +11,9 @@ interface AdminGuardProps {
 }
 
 export default function AdminGuard({ children, fallback }: AdminGuardProps) {
-  const { user, profile, loading, isAuthenticated, isAdmin } = useAuth()
+  const { user, profile, loading, isAuthenticated, isAdmin, retryAuth } = useAuth()
   const router = useRouter()
+  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // 添加調試日誌
   console.log('🔍 AdminGuard 狀態檢查:', {
@@ -26,6 +27,35 @@ export default function AdminGuard({ children, fallback }: AdminGuardProps) {
   console.log('loading', loading) 
   console.log('user_id', user?.id)
   console.log('profile', profile)
+
+  // 處理 loading 超時重試
+  useEffect(() => {
+    if (loading) {
+      console.log('⏰ 開始 loading 計時器...')
+      // 清除之前的計時器
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current)
+      }
+      
+      // 設置 1 秒後重試的計時器
+      loadingTimeoutRef.current = setTimeout(() => {
+        console.log('⚠️ Loading 超過 1 秒，重新嘗試認證')
+        retryAuth()
+      }, 1000)
+    } else {
+      // loading 結束，清除計時器
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current)
+        loadingTimeoutRef.current = null
+      }
+    }
+
+    return () => {
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current)
+      }
+    }
+  }, [loading, retryAuth])
 
   useEffect(() => {
     console.log('AdminGuard useEffect 觸發:', { loading, isAuthenticated, isAdmin })
@@ -67,6 +97,9 @@ export default function AdminGuard({ children, fallback }: AdminGuardProps) {
           </h2>
           <p className="mt-2 text-gray-600">
             正在載入用戶資訊
+          </p>
+          <p className="mt-1 text-sm text-gray-500">
+            如果載入時間過長，系統將自動重試
           </p>
           <div className="mt-4 text-xs text-gray-500">
             <p>調試資訊:</p>

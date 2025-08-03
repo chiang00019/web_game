@@ -3,28 +3,30 @@
 import { useState, useEffect } from 'react'
 
 interface Banner {
-  id?: string
+  banner_id?: string
   title: string
   image_url: string
   link_url?: string
   is_active: boolean
-  display_order: number
+  display_order?: number
 }
 
 interface BannerFormProps {
   banner?: Banner
-  onSave: (banner: Omit<Banner, 'id'>) => void
+  onSave: (banner: Omit<Banner, 'banner_id'>) => void
   onCancel: () => void
 }
 
 export default function BannerForm({ banner, onSave, onCancel }: BannerFormProps) {
-  const [formData, setFormData] = useState<Omit<Banner, 'id'>>({
+  const [formData, setFormData] = useState<Omit<Banner, 'banner_id'>>({
     title: '',
     image_url: '',
     link_url: '',
-    is_active: true,
-    display_order: 1
+    is_active: true
   })
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
 
   useEffect(() => {
     if (banner) {
@@ -32,15 +34,81 @@ export default function BannerForm({ banner, onSave, onCancel }: BannerFormProps
         title: banner.title,
         image_url: banner.image_url,
         link_url: banner.link_url || '',
-        is_active: banner.is_active,
-        display_order: banner.display_order
+        is_active: banner.is_active
       })
+      setImagePreview(banner.image_url)
     }
   }, [banner])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      // 檢查檔案大小
+      if (file.size > 5 * 1024 * 1024) {
+        alert('檔案大小不能超過 5MB')
+        return
+      }
+      
+      // 檢查檔案類型
+      if (!file.type.startsWith('image/')) {
+        alert('只能上傳圖片檔案')
+        return
+      }
+      
+      setImageFile(file)
+      
+      // 建立預覽
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string)
+      }
+      reader.readAsDataURL(file)
+      
+      console.log('✅ 圖片已選擇:', file.name, '大小:', (file.size / 1024 / 1024).toFixed(2) + 'MB')
+    }
+  }
+
+  const uploadImage = async (file: File): Promise<string> => {
+    const formData = new FormData()
+    formData.append('file', file)
+    
+    const response = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData,
+    })
+    
+    if (!response.ok) {
+      throw new Error('圖片上傳失敗')
+    }
+    
+    const data = await response.json()
+    return data.url
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    onSave(formData)
+    setUploading(true)
+    
+    try {
+      let imageUrl = formData.image_url
+      
+      // 如果有新的圖片檔案，先上傳
+      if (imageFile) {
+        imageUrl = await uploadImage(imageFile)
+      }
+      
+      const bannerData = {
+        ...formData,
+        image_url: imageUrl
+      }
+      
+      onSave(bannerData)
+    } catch (error) {
+      console.error('Error:', error)
+      alert('儲存失敗，請重試')
+    } finally {
+      setUploading(false)
+    }
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -71,24 +139,54 @@ export default function BannerForm({ banner, onSave, onCancel }: BannerFormProps
                 name="title"
                 value={formData.title}
                 onChange={handleChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-black"
                 required
               />
             </div>
 
             <div>
-              <label htmlFor="image_url" className="block text-sm font-medium text-gray-700">
-                圖片網址
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                橫幅圖片
               </label>
-              <input
-                type="url"
-                id="image_url"
-                name="image_url"
-                value={formData.image_url}
-                onChange={handleChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                required
-              />
+              
+              {/* 圖片預覽 */}
+              {imagePreview && (
+                <div className="mb-4 p-3 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                  <div className="text-center">
+                    <p className="text-sm font-medium text-gray-700 mb-2">圖片預覽</p>
+                    <div className="relative">
+                      <img
+                        src={imagePreview}
+                        alt="橫幅預覽"
+                        className="w-full h-40 object-cover rounded-md border shadow-sm"
+                      />
+                      {imageFile && (
+                        <div className="absolute top-2 right-2 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+                          新上傳
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">
+                      {imageFile ? `檔案名稱: ${imageFile.name}` : '目前使用的圖片'}
+                    </p>
+                  </div>
+                </div>
+              )}
+              
+              {/* 檔案上傳 */}
+              <div className="mt-2">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
+                />
+                <div className="mt-2 flex items-center space-x-4 text-xs text-gray-500">
+                  <span>✅ 支援 JPG、PNG、GIF</span>
+                  <span>📏 建議尺寸 1200x400</span>
+                  <span>📦 最大 5MB</span>
+                </div>
+              </div>
             </div>
 
             <div>
@@ -105,21 +203,6 @@ export default function BannerForm({ banner, onSave, onCancel }: BannerFormProps
               />
             </div>
 
-            <div>
-              <label htmlFor="display_order" className="block text-sm font-medium text-gray-700">
-                顯示順序
-              </label>
-              <input
-                type="number"
-                id="display_order"
-                name="display_order"
-                value={formData.display_order}
-                onChange={handleChange}
-                min="1"
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                required
-              />
-            </div>
 
             <div className="flex items-center">
               <input
@@ -138,9 +221,10 @@ export default function BannerForm({ banner, onSave, onCancel }: BannerFormProps
             <div className="flex space-x-4 pt-4">
               <button
                 type="submit"
-                className="flex-1 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                disabled={uploading}
+                className="flex-1 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                儲存
+                {uploading ? '上傳中...' : '儲存'}
               </button>
               <button
                 type="button"

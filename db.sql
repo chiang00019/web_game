@@ -104,6 +104,7 @@ CREATE TABLE public.banner (
   content text,
   image_url text,
   link_url text,
+  display_order integer DEFAULT 1,
   is_active boolean DEFAULT true,
   created_at timestamptz DEFAULT now()
 );
@@ -277,3 +278,31 @@ FROM
     auth.users
 ON CONFLICT (user_id) DO UPDATE SET
     user_name = EXCLUDED.user_name;
+
+-- ========= BANNER DISPLAY ORDER INITIALIZATION =========
+
+-- Function to initialize display_order for existing banners
+CREATE OR REPLACE FUNCTION public.initialize_banner_display_order()
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  -- Update banners that don't have display_order set
+  UPDATE public.banner 
+  SET display_order = subquery.row_number
+  FROM (
+    SELECT banner_id, ROW_NUMBER() OVER (ORDER BY created_at) as row_number
+    FROM public.banner
+    WHERE display_order IS NULL
+  ) AS subquery
+  WHERE public.banner.banner_id = subquery.banner_id;
+  
+  -- Ensure all banners have a display_order (fallback for any remaining NULL values)
+  UPDATE public.banner 
+  SET display_order = 1 
+  WHERE display_order IS NULL;
+  
+  RAISE NOTICE 'Banner display_order initialization completed';
+END;
+$$;
+
+-- Execute the initialization function
+SELECT public.initialize_banner_display_order();

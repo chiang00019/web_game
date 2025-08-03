@@ -19,6 +19,7 @@ export function useAuth() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
 
   const fetchProfile = useCallback(async (user: User | null) => {
     if (!user) {
@@ -101,7 +102,7 @@ export function useAuth() {
       mounted = false
       authListener?.subscription.unsubscribe()
     }
-  }, [fetchProfile])
+  }, [fetchProfile, retryCount])
 
   const signOut = async () => {
     try {
@@ -113,13 +114,22 @@ export function useAuth() {
     }
   }
 
+  const retryAuth = useCallback(() => {
+    console.log('🔄 重新嘗試認證...')
+    setLoading(true)
+    setError(null)
+    setRetryCount(prev => prev + 1)
+  }, [])
+
   return {
     user,
     profile,
     loading,
     error,
+    retryCount,
     isAuthenticated: !!user,
     isAdmin: !!profile?.is_admin,
     signOut,
+    retryAuth,
   }
 } 
